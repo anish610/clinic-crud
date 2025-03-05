@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Clinic Patient CRUD</title>
+  <style>
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background-color: #f2f2f2; }
+    .form-container { margin: 20px 0; }
+    button { margin: 5px; }
+    #auth { margin: 10px 0; }
+    #app { display: none; } /* Hidden until password is entered */
+  </style>
+</head>
+<body>
+  <!-- Password Prompt -->
+  <div id="login">
+    <input id="password" type="password" placeholder="Enter Password">
+    <button onclick="checkPassword()">Login</button>
+    <p id="error" style="color: red;"></p>
+  </div>
+
+  <!-- Main App (Hidden Initially) -->
+  <div id="app">
+    <h1>Clinic Patient Management</h1>
+    
+    <!-- Authentication -->
+    <div id="auth">
+      <button onclick="handleAuth()">Sign In with Google</button>
+      <p id="status">Not signed in</p>
+    </div>
+
+    <!-- Add Patient Form -->
+    <div class="form-container">
+      <input id="srno" placeholder="Srno (Auto-generated)" disabled>
+      <input id="date" type="date" required>
+      <input id="patientName" placeholder="Patient Name" required>
+      <input id="age" type="number" placeholder="Age" required>
+      <input id="phoneNo" placeholder="Phone No" required>
+      <input id="diagnosis" placeholder="Diagnosis">
+      <input id="case" placeholder="Case">
+      <input id="remedy" placeholder="Remedy">
+      <input id="payment" type="number" placeholder="Payment (INR)" required>
+      <button onclick="addPatient()" disabled id="addBtn">Add Patient</button>
+    </div>
+
+    <!-- Patient Table -->
+    <table id="patientTable">
+      <thead>
+        <tr>
+          <th>Srno</th>
+          <th>Date</th>
+          <th>Patient Name</th>
+          <th>Age</th>
+          <th>Phone No</th>
+          <th>Diagnosis</th>
+          <th>Case</th>
+          <th>Remedy</th>
+          <th>Payment</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="patientList"></tbody>
+    </table>
+  </div>
+
+  <script src="https://apis.google.com/js/api.js"></script>
+  <script>
+    const CORRECT_PASSWORD = "blue"; // Change this to your password
+    const CLIENT_ID = '178933732517-v6p98sjterkm3lgvmtj3ihm9fiha0k9e.apps.googleusercontent.com'; // From Google Cloud Console
+    const API_KEY = 'AIzaSyDOAKQDcx8E6XhbuoKO5VAIC9jkX5LeIko'; // From Google Cloud Console
+    const SPREADSHEET_ID = '1Z3EOg9XJopVwSby0z5hDuimgx8Ne7HXna2Cwwqi_1lk';
+    const RANGE = 'Sheet1!A2:J'; // Adjusted for 9 columns + Actions
+    const SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
+
+    let isSignedIn = false;
+
+    function checkPassword() {
+      const input = document.getElementById('password').value;
+      if (input === CORRECT_PASSWORD) {
+        localStorage.setItem('clinicAuth', 'true');
+        document.getElementById('login').style.display = 'none';
+        document.getElementById('app').style.display = 'block';
+        gapi.load('client:auth2', initClient);
+      } else {
+        document.getElementById('error').textContent = 'Incorrect password';
+      }
+    }
+
+    // Check if already authenticated
+    if (localStorage.getItem('clinicAuth') === 'true') {
+      document.getElementById('login').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      gapi.load('client:auth2', initClient);
+    }
+
+    function initClient() {
+      gapi.client.init({
+        apiKey: API_KEY,
+        clientId: CLIENT_ID,
+        scope: SCOPE,
+        discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
+      }).then(() => {
+        gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
+        updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
+      });
+    }
+
+    function updateSigninStatus(signedIn) {
+      isSignedIn = signedIn;
+      document.getElementById('status').textContent = signedIn ? 'Signed in' : 'Not signed in';
+      document.getElementById('addBtn').disabled = !signedIn;
+      if (signedIn) loadPatients();
+    }
+
+    function handleAuth() {
+      if (isSignedIn) gapi.auth2.getAuthInstance().signOut();
+      else gapi.auth2.getAuthInstance().signIn();
+    }
+
+    function loadPatients() {
+      gapi.client.sheets.spreadsheets.values.get({
+        spreadsheetId: SPREADSHEET_ID,
+        range: RANGE,
+      }).then(response => {
+        const data = response.result.values || [];
+        const tbody = document.getElementById('patientList');
+        tbody.innerHTML = '';
+        data.forEach((row, index) => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${row[0]}</td>
+            <td>${row[1]}</td>
+            <td>${row[2]}</td>
+            <td>${row[3]}</td>
+            <td>${row[4]}</td>
+            <td>${row[5]}</td>
+            <td>${row[6]}</td>
+            <td>${row[7]}</td>
+            <td>${row[8]}</td>
+            <td>
+              <button onclick="editPatient(${index})">Edit</button>
+              <button onclick="deletePatient(${index})">Delete</button>
+            </td>`;
+          tbody.appendChild(tr);
+        });
+      });
+    }
+
+    function addPatient() {
+      const patient = [
+        Date.now(), // Auto-generated Srno (unique ID)
+        document.getElementById('date').value,
+        document.getElementById('patientName').value,
+        document.getElementById('age').value,
+        document.getElementById('phoneNo').value,
+        document.getElementById('diagnosis').value,
+        document.getElementById('case').value,
+        document.getElementById('remedy').value,
+        document.getElementById('payment').value,
+      ];
+      gapi.client.sheets.spreadsheets.values.append({
+        spreadsheetId: SPREADSHEET_ID,
+        range: 'Sheet1!A:J',
+        valueInputOption: 'RAW',
+        resource: { values: [patient] },
+      }).then(() => {
+        loadPatients();
+        clearForm();
+      });
+    }
+
+    function clearForm() {
+      document.getElementById('srno').value = '';
+      document.getElementById('date').value = '';
+      document.getElementById('patientName').value = '';
+      document.getElementById('age').value = '';
+      document.getElementById('phoneNo').value = '';
+      document.getElementById('diagnosis').value = '';
+      document.getElementById('case').value = '';
+      document.getElementById('remedy').value = '';
+      document.getElementById('payment').value = '';
+    }
+
+    function editPatient(index) {
+      alert('Edit not fully implemented. Update manually in Google Sheets for now.');
+      // Full edit would require prompting for new values and updating the specific row
+    }
+
+    function deletePatient(index) {
+      gapi.client.sheets.spreadsheets.values.update({
+        spreadsheetId: SPREADSHEET_ID,
+        range: `Sheet1!A${index + 2}:J${index + 2}`,
+        valueInputOption: 'RAW',
+        resource: { values: [['', '', '', '', '', '', '', '', '']] },
+      }).then(() => loadPatients());
+    }
+  </script>
+</body>
+</html>
