@@ -4,104 +4,120 @@
   <meta charset="UTF-8">
   <title>Homeopathy Clinic Management</title>
   <link rel="stylesheet" href="style.css">
-  <style>
-    #login {
-      display: block !important;
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    #app {
-      display: none;
-    }
-    #debug {
-      color: #34495e;
-      text-align: center;
-      margin-top: 10px;
-    }
-  </style>
 </head>
 <body>
-  <!-- Password Prompt -->
-  <div id="login">
-    <h2>Login</h2>
-    <input id="password" type="password" placeholder="Enter Password">
-    <button onclick="checkPassword()">Login</button>
-    <p id="error" style="color: red;"></p>
-    <button onclick="resetAuth()">Reset Login</button> <!-- Added for debugging -->
-  </div>
+  <h1>Homeopathy Clinic Management</h1>
 
-  <!-- Main App (Hidden Initially) -->
-  <div id="app">
-    <h1>Homeopathy Clinic Management</h1>
-
-    <!-- Add Client Form -->
-    <div class="form-container">
-      <h2>Add Patient Record</h2>
+  <!-- Add Client Form -->
+  <div class="form-container">
+    <h2>Add Patient Record</h2>
+    <div class="form-group">
       <label for="date">Date (dd-mm-yyyy):</label>
       <input id="date" type="date" required>
+    </div>
+    <div class="form-group">
       <label for="name">Patient Name:</label>
-      <input id="name" placeholder="e.g., Ramesh" required>
+      <input id="name" list="nameSuggestions" placeholder="e.g., Ramesh" required oninput="updateSuggestions()">
+      <datalist id="nameSuggestions"></datalist>
+    </div>
+    <div class="form-group">
       <label for="age">Age:</label>
       <input id="age" type="number" placeholder="e.g., 25" required>
+    </div>
+    <div class="form-group">
       <label for="phone">Phone No:</label>
       <input id="phone" placeholder="e.g., 643463463" required>
+    </div>
+    <div class="form-group">
       <label for="diagnosis">Diagnosis/Symptoms:</label>
       <textarea id="diagnosis" placeholder="e.g., TB (Enter symptoms or diagnosis)" rows="3"></textarea>
+    </div>
+    <div class="form-group">
       <label for="case">Case Details:</label>
       <textarea id="case" placeholder="e.g., Sensitive (Enter case notes)" rows="3"></textarea>
+    </div>
+    <div class="form-group">
       <label for="remedy">Remedy:</label>
       <textarea id="remedy" placeholder="e.g., Arnica 30C (Enter remedy details)" rows="3"></textarea>
+    </div>
+    <div class="form-group">
       <label for="payment">Payment (INR):</label>
       <input id="payment" type="number" placeholder="e.g., 500" required>
+    </div>
+    <div class="form-actions">
       <button onclick="addClient()">Add Patient</button>
       <button onclick="exportData()">Export Data</button>
       <input type="file" id="importFile" accept=".json" onchange="importData(event)">
     </div>
+  </div>
 
-    <!-- Client Table -->
-    <table id="clientTable">
-      <thead>
-        <tr>
-          <th>Srno</th>
-          <th>Date</th>
-          <th>Patient Name</th>
-          <th>Age</th>
-          <th>Phone No</th>
-          <th>Diagnosis/Symptoms</th>
-          <th>Case Details</th>
-          <th>Remedy</th>
-          <th>Payment (INR)</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="clientList"></tbody>
-    </table>
+  <!-- Search Input -->
+  <div class="search-container">
+    <label for="search">Search:</label>
+    <input id="search" type="text" placeholder="Search all fields..." oninput="searchTable()">
+  </div>
 
-    <!-- Edit Form (Hidden Initially) -->
-    <div id="editForm" class="form-container" style="display: none;">
-      <h2>Edit Patient Record</h2>
+  <!-- Client Table -->
+  <table id="clientTable">
+    <thead>
+      <tr>
+        <th>Srno</th>
+        <th>Date</th>
+        <th>Patient Name</th>
+        <th>Age</th>
+        <th>Phone No</th>
+        <th>Diagnosis/Symptoms</th>
+        <th>Case Details</th>
+        <th>Remedy</th>
+        <th>Payment (INR)</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="clientList"></tbody>
+  </table>
+
+  <!-- Edit Form (Hidden Initially) -->
+  <div id="editForm" class="form-container" style="display: none;">
+    <h2>Edit Patient Record</h2>
+    <div class="form-group">
       <label for="editDate">Date (dd-mm-yyyy):</label>
       <input id="editDate" type="date" required>
+    </div>
+    <div class="form-group">
       <label for="editName">Patient Name:</label>
       <input id="editName" required>
+    </div>
+    <div class="form-group">
       <label for="editAge">Age:</label>
       <input id="editAge" type="number" required>
+    </div>
+    <div class="form-group">
       <label for="editPhone">Phone No:</label>
       <input id="editPhone" required>
+    </div>
+    <div class="form-group">
       <label for="editDiagnosis">Diagnosis/Symptoms:</label>
       <textarea id="editDiagnosis" rows="3"></textarea>
+    </div>
+    <div class="form-group">
       <label for="editCase">Case Details:</label>
       <textarea id="editCase" rows="3"></textarea>
+    </div>
+    <div class="form-group">
       <label for="editRemedy">Remedy:</label>
       <textarea id="editRemedy" rows="3"></textarea>
+    </div>
+    <div class="form-group">
       <label for="editPayment">Payment (INR):</label>
       <input id="editPayment" type="number" required>
+    </div>
+    <div class="form-actions">
       <button onclick="saveEdit()">Save Changes</button>
       <button onclick="cancelEdit()">Cancel</button>
     </div>
   </div>
 
-  <div id="debug"></div>
+  <div id="debug" style="color: #34495e; text-align: center; margin-top: 10px;"></div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js" onload="onSqlLoad()" onerror="onSqlError()"></script>
   <script>
@@ -119,10 +135,6 @@
     }
 
     function initApp() {
-      document.getElementById('login').style.display = 'block'; // Ensure login is visible
-      const CORRECT_PASSWORD = "yourSecretPassword"; // Change this to your password
-
-      // Initialize SQLite database
       async function initDB() {
         try {
           const SQL = await initSqlJs({ locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}` });
@@ -147,56 +159,76 @@
         }
       }
 
-      function checkPassword() {
-        console.log('checkPassword called with:', document.getElementById('password').value);
-        const input = document.getElementById('password').value;
-        if (input === CORRECT_PASSWORD) {
-          console.log('Password correct, proceeding to login');
-          localStorage.setItem('clinicAuth', 'true');
-          document.getElementById('login').style.display = 'none';
-          document.getElementById('app').style.display = 'block';
-          document.getElementById('debug').textContent = 'Logged in successfully';
-          initDB();
-        } else {
-          document.getElementById('error').textContent = 'Incorrect password';
-          console.log('Password incorrect');
-        }
-      }
+      initDB();
 
-      // Check if already authenticated
-      if (localStorage.getItem('clinicAuth') === 'true') {
-        console.log('Authenticated via localStorage');
-        document.getElementById('login').style.display = 'none';
-        document.getElementById('app').style.display = 'block';
-        document.getElementById('debug').textContent = 'Auto-logged in via localStorage';
-        initDB();
-      }
+      // Set current date as default for new records
+      document.getElementById('date').value = new Date().toISOString().split('T')[0];
 
       function loadClients() {
-        const result = db.exec("SELECT * FROM Clients");
-        const tbody = document.getElementById('clientList');
-        tbody.innerHTML = '';
-        if (result.length > 0) {
-          const rows = result[0].values;
-          rows.forEach((row, index) => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-              <td>${row[0]}</td>
-              <td>${row[1]}</td>
-              <td>${row[2]}</td>
-              <td>${row[3]}</td>
-              <td>${row[4]}</td>
-              <td>${row[5]}</td>
-              <td>${row[6]}</td>
-              <td>${row[7]}</td>
-              <td>${row[8]}</td>
-              <td>
-                <button onclick="editClient(${row[0]})">Edit</button>
-                <button onclick="deleteClient(${row[0]})">Delete</button>
-              </td>`;
-            tbody.appendChild(tr);
-          });
+        try {
+          const result = db.exec("SELECT * FROM Clients");
+          const tbody = document.getElementById('clientList');
+          tbody.innerHTML = '';
+          if (result.length > 0) {
+            const rows = result[0].values;
+            rows.forEach((row) => {
+              const tr = document.createElement('tr');
+              tr.innerHTML = `
+                <td>${row[0]}</td>
+                <td>${row[1]}</td>
+                <td>${row[2]}</td>
+                <td>${row[3]}</td>
+                <td>${row[4]}</td>
+                <td>${row[5]}</td>
+                <td>${row[6]}</td>
+                <td>${row[7]}</td>
+                <td>${row[8]}</td>
+                <td>
+                  <button onclick="editClient(${row[0]})">Edit</button>
+                  <button onclick="deleteClient(${row[0]})">Delete</button>
+                </td>`;
+              tbody.appendChild(tr);
+            });
+          }
+        } catch (err) {
+          console.error('Error loading clients:', err);
+          document.getElementById('debug').textContent = 'Error loading clients. Check console.';
         }
+      }
+
+      function updateSuggestions() {
+        const nameInput = document.getElementById('name');
+        const name = nameInput.value.toLowerCase();
+        const suggestions = document.getElementById('nameSuggestions');
+        suggestions.innerHTML = '';
+
+        if (name.length < 1) return;
+
+        try {
+          const result = db.exec("SELECT DISTINCT name, phone, age FROM Clients WHERE LOWER(name) LIKE ? || '%'", [name]);
+          if (result.length > 0) {
+            const rows = result[0].values;
+            rows.forEach(row => {
+              const option = document.createElement('option');
+              option.value = row[0]; // Name
+              option.setAttribute('data-phone', row[1]); // Phone
+              option.setAttribute('data-age', row[2]); // Age
+              suggestions.appendChild(option);
+            });
+          }
+        } catch (err) {
+          console.error('Error updating suggestions:', err);
+          document.getElementById('debug').textContent = 'Error updating suggestions. Check console.';
+        }
+
+        // Autofill fields when a suggestion is selected
+        nameInput.addEventListener('change', function() {
+          const selectedOption = Array.from(suggestions.options).find(opt => opt.value === nameInput.value);
+          if (selectedOption) {
+            document.getElementById('phone').value = selectedOption.getAttribute('data-phone') || '';
+            document.getElementById('age').value = selectedOption.getAttribute('data-age') || '';
+          }
+        }, { once: true }); // Use { once: true } to avoid multiple event listeners
       }
 
       function addClient() {
@@ -209,21 +241,34 @@
         const remedy = document.getElementById('remedy').value;
         const payment = document.getElementById('payment').value;
 
+        // Validate required fields
         if (!date || !name || !age || !phone || !payment) {
-          alert('Date, Name, Age, Phone, and Payment are required');
+          alert('Please fill in all required fields: Date, Name, Age, Phone, and Payment');
+          console.log('Validation failed:', { date, name, age, phone, payment });
           return;
         }
 
-        db.run(
-          "INSERT INTO Clients (srno, date, name, age, phone, diagnosis, caseDetails, remedy, payment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-          [Date.now(), date, name, age, phone, diagnosis, caseDetails, remedy, payment]
-        );
-        loadClients();
-        clearForm();
+        try {
+          // Log input values for debugging
+          console.log('Attempting to add patient:', { date, name, age, phone, payment, diagnosis, caseDetails, remedy });
+
+          // Insert new patient record
+          db.run(
+            "INSERT INTO Clients (srno, date, name, age, phone, diagnosis, caseDetails, remedy, payment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [Date.now(), date, name, parseInt(age), phone, diagnosis, caseDetails, remedy, parseInt(payment)]
+          );
+
+          console.log('Patient added successfully');
+          loadClients();
+          clearForm();
+        } catch (err) {
+          console.error('Error adding patient:', err);
+          document.getElementById('debug').textContent = 'Error adding patient: ' + err.message;
+        }
       }
 
       function clearForm() {
-        document.getElementById('date').value = '';
+        document.getElementById('date').value = new Date().toISOString().split('T')[0];
         document.getElementById('name').value = '';
         document.getElementById('age').value = '';
         document.getElementById('phone').value = '';
@@ -234,19 +279,24 @@
       }
 
       function editClient(srno) {
-        const result = db.exec("SELECT * FROM Clients WHERE srno = ?", [srno]);
-        if (result.length > 0) {
-          const row = result[0].values[0];
-          document.getElementById('editDate').value = row[1];
-          document.getElementById('editName').value = row[2];
-          document.getElementById('editAge').value = row[3];
-          document.getElementById('editPhone').value = row[4];
-          document.getElementById('editDiagnosis').value = row[5];
-          document.getElementById('editCase').value = row[6];
-          document.getElementById('editRemedy').value = row[7];
-          document.getElementById('editPayment').value = row[8];
-          editingId = srno;
-          document.getElementById('editForm').style.display = 'block';
+        try {
+          const result = db.exec("SELECT * FROM Clients WHERE srno = ?", [srno]);
+          if (result.length > 0) {
+            const row = result[0].values[0];
+            document.getElementById('editDate').value = row[1];
+            document.getElementById('editName').value = row[2];
+            document.getElementById('editAge').value = row[3];
+            document.getElementById('editPhone').value = row[4];
+            document.getElementById('editDiagnosis').value = row[5];
+            document.getElementById('editCase').value = row[6];
+            document.getElementById('editRemedy').value = row[7];
+            document.getElementById('editPayment').value = row[8];
+            editingId = srno;
+            document.getElementById('editForm').style.display = 'block';
+          }
+        } catch (err) {
+          console.error('Error editing client:', err);
+          document.getElementById('debug').textContent = 'Error editing client. Check console.';
         }
       }
 
@@ -261,16 +311,21 @@
         const payment = document.getElementById('editPayment').value;
 
         if (!date || !name || !age || !phone || !payment) {
-          alert('Date, Name, Age, Phone, and Payment are required');
+          alert('Please fill in all required fields: Date, Name, Age, Phone, and Payment');
           return;
         }
 
-        db.run(
-          "UPDATE Clients SET date = ?, name = ?, age = ?, phone = ?, diagnosis = ?, caseDetails = ?, remedy = ?, payment = ? WHERE srno = ?",
-          [date, name, age, phone, diagnosis, caseDetails, remedy, payment, editingId]
-        );
-        cancelEdit();
-        loadClients();
+        try {
+          db.run(
+            "UPDATE Clients SET date = ?, name = ?, age = ?, phone = ?, diagnosis = ?, caseDetails = ?, remedy = ?, payment = ? WHERE srno = ?",
+            [date, name, parseInt(age), phone, diagnosis, caseDetails, remedy, parseInt(payment), editingId]
+          );
+          cancelEdit();
+          loadClients();
+        } catch (err) {
+          console.error('Error saving edit:', err);
+          document.getElementById('debug').textContent = 'Error saving edit: ' + err.message;
+        }
       }
 
       function cancelEdit() {
@@ -279,8 +334,13 @@
       }
 
       function deleteClient(srno) {
-        db.run("DELETE FROM Clients WHERE srno = ?", [srno]);
-        loadClients();
+        try {
+          db.run("DELETE FROM Clients WHERE srno = ?", [srno]);
+          loadClients();
+        } catch (err) {
+          console.error('Error deleting client:', err);
+          document.getElementById('debug').textContent = 'Error deleting client. Check console.';
+        }
       }
 
       // Export data to JSON
@@ -325,10 +385,21 @@
         reader.readAsText(file);
       }
 
-      // Reset authentication for debugging
-      function resetAuth() {
-        localStorage.removeItem('clinicAuth');
-        location.reload();
+      // Generic search function
+      function searchTable() {
+        const searchTerm = document.getElementById('search').value.toLowerCase();
+        const rows = document.getElementById('clientList').getElementsByTagName('tr');
+        for (let i = 0; i < rows.length; i++) {
+          let match = false;
+          const cells = rows[i].getElementsByTagName('td');
+          for (let j = 0; j < cells.length - 1; j++) { // Exclude Actions column
+            if (cells[j].textContent.toLowerCase().includes(searchTerm)) {
+              match = true;
+              break;
+            }
+          }
+          rows[i].style.display = match ? '' : 'none';
+        }
       }
     }
   </script>
