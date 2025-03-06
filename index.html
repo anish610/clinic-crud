@@ -16,6 +16,10 @@
       <input id="date" type="date" required>
     </div>
     <div class="form-group">
+      <label for="patientId">Patient ID:</label>
+      <input id="patientId" type="text" readonly>
+    </div>
+    <div class="form-group">
       <label for="name">Patient Name:</label>
       <input id="name" list="nameSuggestions" placeholder="e.g., Ramesh" required oninput="updateSuggestions()">
       <datalist id="nameSuggestions"></datalist>
@@ -62,6 +66,7 @@
     <thead>
       <tr>
         <th>Srno</th>
+        <th>Patient ID</th>
         <th>Date</th>
         <th>Patient Name</th>
         <th>Age</th>
@@ -82,6 +87,10 @@
     <div class="form-group">
       <label for="editDate">Date (dd-mm-yyyy):</label>
       <input id="editDate" type="date" required>
+    </div>
+    <div class="form-group">
+      <label for="editPatientId">Patient ID:</label>
+      <input id="editPatientId" type="text" readonly>
     </div>
     <div class="form-group">
       <label for="editName">Patient Name:</label>
@@ -132,6 +141,22 @@
       return maxSrno + 1; // Increment the highest srno by 1
     }
 
+    // Function to generate a random 4-digit number (1000-9999)
+    function generateRandomPatientId() {
+      return Math.floor(1000 + Math.random() * 9000); // Random number between 1000 and 9999
+    }
+
+    // Function to generate or retrieve patientId based on name
+    function getPatientId(name) {
+      // Check if a patient with this name already has a patientId
+      const existingClient = clients.find(client => client.name.toLowerCase() === name.toLowerCase());
+      if (existingClient) {
+        return existingClient.patientId; // Reuse existing patientId
+      }
+      // Generate a new random 4-digit patientId
+      return generateRandomPatientId();
+    }
+
     // Load clients into the table
     function loadClients() {
       const tbody = document.getElementById('clientList');
@@ -140,6 +165,7 @@
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${client.srno || 'N/A'}</td>
+          <td>${client.patientId || 'N/A'}</td>
           <td>${client.date || ''}</td>
           <td>${client.name || ''}</td>
           <td>${client.age !== null ? client.age : ''}</td>
@@ -173,6 +199,7 @@
       uniqueNames.forEach(client => {
         const option = document.createElement('option');
         option.value = client.name;
+        option.setAttribute('data-patientId', client.patientId || '');
         option.setAttribute('data-phone', client.phone || '');
         option.setAttribute('data-age', client.age !== null ? client.age : '');
         suggestions.appendChild(option);
@@ -182,8 +209,11 @@
       nameInput.addEventListener('change', function() {
         const selectedOption = Array.from(suggestions.options).find(opt => opt.value === nameInput.value);
         if (selectedOption) {
+          document.getElementById('patientId').value = selectedOption.getAttribute('data-patientId') || getPatientId(nameInput.value);
           document.getElementById('phone').value = selectedOption.getAttribute('data-phone') || '';
           document.getElementById('age').value = selectedOption.getAttribute('data-age') || '';
+        } else {
+          document.getElementById('patientId').value = getPatientId(nameInput.value); // Set new patientId if no match
         }
       }, { once: true });
     }
@@ -191,6 +221,7 @@
     // Add a new client
     function addClient() {
       const date = document.getElementById('date').value;
+      const patientId = document.getElementById('patientId').value;
       const name = document.getElementById('name').value;
       const age = document.getElementById('age').value;
       const phone = document.getElementById('phone').value;
@@ -207,6 +238,7 @@
 
       const newClient = {
         srno: getNextSrno(), // Use incremental srno
+        patientId: patientId || getPatientId(name), // Use existing or generate new patientId
         date,
         name,
         age: parseInt(age),
@@ -227,6 +259,7 @@
     // Clear the form
     function clearForm() {
       document.getElementById('date').value = new Date().toISOString().split('T')[0];
+      document.getElementById('patientId').value = '';
       document.getElementById('name').value = '';
       document.getElementById('age').value = '';
       document.getElementById('phone').value = '';
@@ -241,6 +274,7 @@
       const client = clients.find(c => c.srno === srno);
       if (client) {
         document.getElementById('editDate').value = client.date || '';
+        document.getElementById('editPatientId').value = client.patientId || '';
         document.getElementById('editName').value = client.name || '';
         document.getElementById('editAge').value = client.age !== null ? client.age : '';
         document.getElementById('editPhone').value = client.phone || '';
@@ -259,6 +293,7 @@
     // Save edited client
     function saveEdit() {
       const date = document.getElementById('editDate').value;
+      const patientId = document.getElementById('editPatientId').value;
       const name = document.getElementById('editName').value;
       const age = document.getElementById('editAge').value;
       const phone = document.getElementById('editPhone').value;
@@ -274,8 +309,13 @@
 
       const clientIndex = clients.findIndex(c => c.srno === editingId);
       if (clientIndex !== -1) {
+        // Check if the name has changed and update patientId accordingly
+        const existingName = clients[clientIndex].name;
+        const newPatientId = name.toLowerCase() === existingName.toLowerCase() ? patientId : getPatientId(name);
+
         clients[clientIndex] = {
           srno: editingId, // Preserve the original srno
+          patientId: newPatientId, // Update patientId if name changed
           date,
           name,
           age: parseInt(age),
@@ -329,7 +369,10 @@
       reader.onload = function(e) {
         try {
           const data = JSON.parse(e.target.result);
-          clients = data;
+          clients = data.map(client => ({
+            ...client,
+            patientId: client.patientId || getPatientId(client.name) // Ensure patientId is set
+          }));
           localStorage.setItem('clients', JSON.stringify(clients));
           console.log('Data imported successfully');
           loadClients();
