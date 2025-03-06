@@ -119,289 +119,247 @@
 
   <div id="debug" style="color: #34495e; text-align: center; margin-top: 10px;"></div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js" onload="onSqlLoad()" onerror="onSqlError()"></script>
   <script>
-    let db = null;
+    let clients = JSON.parse(localStorage.getItem('clients')) || [];
     let editingId = null;
 
-    function onSqlLoad() {
-      console.log('sql.js loaded successfully');
-      initApp();
+    // Function to get the next incremental srno
+    function getNextSrno() {
+      if (clients.length === 0) {
+        return 1; // Start with 1 if no clients exist
+      }
+      const maxSrno = Math.max(...clients.map(client => client.srno));
+      return maxSrno + 1; // Increment the highest srno by 1
     }
 
-    function onSqlError() {
-      console.error('Failed to load sql.js');
-      document.getElementById('debug').textContent = 'Error: Failed to load database library. Check console.';
+    // Load clients into the table
+    function loadClients() {
+      const tbody = document.getElementById('clientList');
+      tbody.innerHTML = '';
+      clients.forEach((client) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${client.srno || 'N/A'}</td>
+          <td>${client.date || ''}</td>
+          <td>${client.name || ''}</td>
+          <td>${client.age !== null ? client.age : ''}</td>
+          <td>${client.phone || ''}</td>
+          <td>${client.diagnosis || ''}</td>
+          <td>${client.caseDetails || ''}</td>
+          <td>${client.remedy || ''}</td>
+          <td>${client.payment !== null ? client.payment : ''}</td>
+          <td>
+            <button onclick="editClient(${client.srno})">Edit</button>
+            <button onclick="deleteClient(${client.srno})">Delete</button>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+      console.log('Clients loaded:', clients.length, 'records');
     }
 
-    function initApp() {
-      async function initDB() {
-        try {
-          const SQL = await initSqlJs({ locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}` });
-          db = new SQL.Database();
-          db.run(`
-            CREATE TABLE IF NOT EXISTS Clients (
-              srno INTEGER PRIMARY KEY,
-              date TEXT,
-              name TEXT,
-              age INTEGER,
-              phone TEXT,
-              diagnosis TEXT,
-              caseDetails TEXT,
-              remedy TEXT,
-              payment INTEGER
-            );
-          `);
-          loadClients();
-        } catch (err) {
-          console.error('DB init error:', err);
-          document.getElementById('debug').textContent = 'Database initialization failed. Check console.';
+    // Update name suggestions
+    function updateSuggestions() {
+      const nameInput = document.getElementById('name');
+      const name = nameInput.value.toLowerCase();
+      const suggestions = document.getElementById('nameSuggestions');
+      suggestions.innerHTML = '';
+
+      if (name.length < 1) return;
+
+      const uniqueNames = [...new Set(clients.map(client => client.name.toLowerCase()))]
+        .filter(n => n.startsWith(name))
+        .map(n => clients.find(c => c.name.toLowerCase() === n));
+
+      uniqueNames.forEach(client => {
+        const option = document.createElement('option');
+        option.value = client.name;
+        option.setAttribute('data-phone', client.phone || '');
+        option.setAttribute('data-age', client.age !== null ? client.age : '');
+        suggestions.appendChild(option);
+      });
+
+      // Autofill fields when a suggestion is selected
+      nameInput.addEventListener('change', function() {
+        const selectedOption = Array.from(suggestions.options).find(opt => opt.value === nameInput.value);
+        if (selectedOption) {
+          document.getElementById('phone').value = selectedOption.getAttribute('data-phone') || '';
+          document.getElementById('age').value = selectedOption.getAttribute('data-age') || '';
         }
+      }, { once: true });
+    }
+
+    // Add a new client
+    function addClient() {
+      const date = document.getElementById('date').value;
+      const name = document.getElementById('name').value;
+      const age = document.getElementById('age').value;
+      const phone = document.getElementById('phone').value;
+      const diagnosis = document.getElementById('diagnosis').value;
+      const caseDetails = document.getElementById('case').value;
+      const remedy = document.getElementById('remedy').value;
+      const payment = document.getElementById('payment').value;
+
+      if (!date || !name || !age || !phone || !payment) {
+        alert('Please fill in all required fields: Date, Name, Age, Phone, and Payment');
+        console.log('Validation failed:', { date, name, age, phone, payment });
+        return;
       }
 
-      initDB();
+      const newClient = {
+        srno: getNextSrno(), // Use incremental srno
+        date,
+        name,
+        age: parseInt(age),
+        phone,
+        diagnosis: diagnosis || '',
+        caseDetails: caseDetails || '',
+        remedy: remedy || '',
+        payment: parseInt(payment)
+      };
 
-      // Set current date as default for new records
+      clients.push(newClient);
+      localStorage.setItem('clients', JSON.stringify(clients));
+      console.log('Patient added successfully:', newClient);
+      loadClients();
+      clearForm();
+    }
+
+    // Clear the form
+    function clearForm() {
       document.getElementById('date').value = new Date().toISOString().split('T')[0];
+      document.getElementById('name').value = '';
+      document.getElementById('age').value = '';
+      document.getElementById('phone').value = '';
+      document.getElementById('diagnosis').value = '';
+      document.getElementById('case').value = '';
+      document.getElementById('remedy').value = '';
+      document.getElementById('payment').value = '';
+    }
 
-      function loadClients() {
-        try {
-          const result = db.exec("SELECT * FROM Clients");
-          const tbody = document.getElementById('clientList');
-          tbody.innerHTML = '';
-          if (result.length > 0) {
-            const rows = result[0].values;
-            rows.forEach((row) => {
-              const tr = document.createElement('tr');
-              tr.innerHTML = `
-                <td>${row[0]}</td>
-                <td>${row[1]}</td>
-                <td>${row[2]}</td>
-                <td>${row[3]}</td>
-                <td>${row[4]}</td>
-                <td>${row[5]}</td>
-                <td>${row[6]}</td>
-                <td>${row[7]}</td>
-                <td>${row[8]}</td>
-                <td>
-                  <button onclick="editClient(${row[0]})">Edit</button>
-                  <button onclick="deleteClient(${row[0]})">Delete</button>
-                </td>`;
-              tbody.appendChild(tr);
-            });
-          }
-        } catch (err) {
-          console.error('Error loading clients:', err);
-          document.getElementById('debug').textContent = 'Error loading clients. Check console.';
-        }
-      }
-
-      function updateSuggestions() {
-        const nameInput = document.getElementById('name');
-        const name = nameInput.value.toLowerCase();
-        const suggestions = document.getElementById('nameSuggestions');
-        suggestions.innerHTML = '';
-
-        if (name.length < 1) return;
-
-        try {
-          const result = db.exec("SELECT DISTINCT name, phone, age FROM Clients WHERE LOWER(name) LIKE ? || '%'", [name]);
-          if (result.length > 0) {
-            const rows = result[0].values;
-            rows.forEach(row => {
-              const option = document.createElement('option');
-              option.value = row[0]; // Name
-              option.setAttribute('data-phone', row[1]); // Phone
-              option.setAttribute('data-age', row[2]); // Age
-              suggestions.appendChild(option);
-            });
-          }
-        } catch (err) {
-          console.error('Error updating suggestions:', err);
-          document.getElementById('debug').textContent = 'Error updating suggestions. Check console.';
-        }
-
-        // Autofill fields when a suggestion is selected
-        nameInput.addEventListener('change', function() {
-          const selectedOption = Array.from(suggestions.options).find(opt => opt.value === nameInput.value);
-          if (selectedOption) {
-            document.getElementById('phone').value = selectedOption.getAttribute('data-phone') || '';
-            document.getElementById('age').value = selectedOption.getAttribute('data-age') || '';
-          }
-        }, { once: true }); // Use { once: true } to avoid multiple event listeners
-      }
-
-      function addClient() {
-        const date = document.getElementById('date').value;
-        const name = document.getElementById('name').value;
-        const age = document.getElementById('age').value;
-        const phone = document.getElementById('phone').value;
-        const diagnosis = document.getElementById('diagnosis').value;
-        const caseDetails = document.getElementById('case').value;
-        const remedy = document.getElementById('remedy').value;
-        const payment = document.getElementById('payment').value;
-
-        // Validate required fields
-        if (!date || !name || !age || !phone || !payment) {
-          alert('Please fill in all required fields: Date, Name, Age, Phone, and Payment');
-          console.log('Validation failed:', { date, name, age, phone, payment });
-          return;
-        }
-
-        try {
-          // Log input values for debugging
-          console.log('Attempting to add patient:', { date, name, age, phone, payment, diagnosis, caseDetails, remedy });
-
-          // Insert new patient record
-          db.run(
-            "INSERT INTO Clients (srno, date, name, age, phone, diagnosis, caseDetails, remedy, payment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            [Date.now(), date, name, parseInt(age), phone, diagnosis, caseDetails, remedy, parseInt(payment)]
-          );
-
-          console.log('Patient added successfully');
-          loadClients();
-          clearForm();
-        } catch (err) {
-          console.error('Error adding patient:', err);
-          document.getElementById('debug').textContent = 'Error adding patient: ' + err.message;
-        }
-      }
-
-      function clearForm() {
-        document.getElementById('date').value = new Date().toISOString().split('T')[0];
-        document.getElementById('name').value = '';
-        document.getElementById('age').value = '';
-        document.getElementById('phone').value = '';
-        document.getElementById('diagnosis').value = '';
-        document.getElementById('case').value = '';
-        document.getElementById('remedy').value = '';
-        document.getElementById('payment').value = '';
-      }
-
-      function editClient(srno) {
-        try {
-          const result = db.exec("SELECT * FROM Clients WHERE srno = ?", [srno]);
-          if (result.length > 0) {
-            const row = result[0].values[0];
-            document.getElementById('editDate').value = row[1];
-            document.getElementById('editName').value = row[2];
-            document.getElementById('editAge').value = row[3];
-            document.getElementById('editPhone').value = row[4];
-            document.getElementById('editDiagnosis').value = row[5];
-            document.getElementById('editCase').value = row[6];
-            document.getElementById('editRemedy').value = row[7];
-            document.getElementById('editPayment').value = row[8];
-            editingId = srno;
-            document.getElementById('editForm').style.display = 'block';
-          }
-        } catch (err) {
-          console.error('Error editing client:', err);
-          document.getElementById('debug').textContent = 'Error editing client. Check console.';
-        }
-      }
-
-      function saveEdit() {
-        const date = document.getElementById('editDate').value;
-        const name = document.getElementById('editName').value;
-        const age = document.getElementById('editAge').value;
-        const phone = document.getElementById('editPhone').value;
-        const diagnosis = document.getElementById('editDiagnosis').value;
-        const caseDetails = document.getElementById('editCase').value;
-        const remedy = document.getElementById('editRemedy').value;
-        const payment = document.getElementById('editPayment').value;
-
-        if (!date || !name || !age || !phone || !payment) {
-          alert('Please fill in all required fields: Date, Name, Age, Phone, and Payment');
-          return;
-        }
-
-        try {
-          db.run(
-            "UPDATE Clients SET date = ?, name = ?, age = ?, phone = ?, diagnosis = ?, caseDetails = ?, remedy = ?, payment = ? WHERE srno = ?",
-            [date, name, parseInt(age), phone, diagnosis, caseDetails, remedy, parseInt(payment), editingId]
-          );
-          cancelEdit();
-          loadClients();
-        } catch (err) {
-          console.error('Error saving edit:', err);
-          document.getElementById('debug').textContent = 'Error saving edit: ' + err.message;
-        }
-      }
-
-      function cancelEdit() {
-        document.getElementById('editForm').style.display = 'none';
-        editingId = null;
-      }
-
-      function deleteClient(srno) {
-        try {
-          db.run("DELETE FROM Clients WHERE srno = ?", [srno]);
-          loadClients();
-        } catch (err) {
-          console.error('Error deleting client:', err);
-          document.getElementById('debug').textContent = 'Error deleting client. Check console.';
-        }
-      }
-
-      // Export data to JSON
-      function exportData() {
-        const result = db.exec("SELECT * FROM Clients");
-        const data = result[0].values.map(row => ({
-          srno: row[0],
-          date: row[1],
-          name: row[2],
-          age: row[3],
-          phone: row[4],
-          diagnosis: row[5],
-          caseDetails: row[6],
-          remedy: row[7],
-          payment: row[8]
-        }));
-        const json = JSON.stringify(data, null, 2);
-        const blob = new Blob([json], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'clients.json';
-        a.click();
-        URL.revokeObjectURL(url);
-      }
-
-      // Import data from JSON
-      function importData(event) {
-        const file = event.target.files[0];
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          const data = JSON.parse(e.target.result);
-          db.run("DELETE FROM Clients"); // Clear existing data
-          data.forEach(client => {
-            db.run(
-              "INSERT INTO Clients (srno, date, name, age, phone, diagnosis, caseDetails, remedy, payment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-              [client.srno, client.date, client.name, client.age, client.phone, client.diagnosis, client.caseDetails, client.remedy, client.payment]
-            );
-          });
-          loadClients();
-        };
-        reader.readAsText(file);
-      }
-
-      // Generic search function
-      function searchTable() {
-        const searchTerm = document.getElementById('search').value.toLowerCase();
-        const rows = document.getElementById('clientList').getElementsByTagName('tr');
-        for (let i = 0; i < rows.length; i++) {
-          let match = false;
-          const cells = rows[i].getElementsByTagName('td');
-          for (let j = 0; j < cells.length - 1; j++) { // Exclude Actions column
-            if (cells[j].textContent.toLowerCase().includes(searchTerm)) {
-              match = true;
-              break;
-            }
-          }
-          rows[i].style.display = match ? '' : 'none';
-        }
+    // Edit a client
+    function editClient(srno) {
+      const client = clients.find(c => c.srno === srno);
+      if (client) {
+        document.getElementById('editDate').value = client.date || '';
+        document.getElementById('editName').value = client.name || '';
+        document.getElementById('editAge').value = client.age !== null ? client.age : '';
+        document.getElementById('editPhone').value = client.phone || '';
+        document.getElementById('editDiagnosis').value = client.diagnosis || '';
+        document.getElementById('editCase').value = client.caseDetails || '';
+        document.getElementById('editRemedy').value = client.remedy || '';
+        document.getElementById('editPayment').value = client.payment !== null ? client.payment : '';
+        editingId = srno;
+        document.getElementById('editForm').style.display = 'block';
+        console.log('Edit form populated for srno:', srno);
+      } else {
+        console.log('No client found for srno:', srno);
       }
     }
+
+    // Save edited client
+    function saveEdit() {
+      const date = document.getElementById('editDate').value;
+      const name = document.getElementById('editName').value;
+      const age = document.getElementById('editAge').value;
+      const phone = document.getElementById('editPhone').value;
+      const diagnosis = document.getElementById('editDiagnosis').value;
+      const caseDetails = document.getElementById('editCase').value;
+      const remedy = document.getElementById('editRemedy').value;
+      const payment = document.getElementById('editPayment').value;
+
+      if (!date || !name || !age || !phone || !payment) {
+        alert('Please fill in all required fields: Date, Name, Age, Phone, and Payment');
+        return;
+      }
+
+      const clientIndex = clients.findIndex(c => c.srno === editingId);
+      if (clientIndex !== -1) {
+        clients[clientIndex] = {
+          srno: editingId, // Preserve the original srno
+          date,
+          name,
+          age: parseInt(age),
+          phone,
+          diagnosis: diagnosis || '',
+          caseDetails: caseDetails || '',
+          remedy: remedy || '',
+          payment: parseInt(payment)
+        };
+        localStorage.setItem('clients', JSON.stringify(clients));
+        console.log('Edit saved successfully for srno:', editingId);
+        cancelEdit();
+        loadClients();
+      }
+    }
+
+    // Cancel edit
+    function cancelEdit() {
+      document.getElementById('editForm').style.display = 'none';
+      editingId = null;
+    }
+
+    // Delete a client
+    function deleteClient(srno) {
+      const clientIndex = clients.findIndex(c => c.srno === srno);
+      if (clientIndex !== -1) {
+        clients.splice(clientIndex, 1);
+        localStorage.setItem('clients', JSON.stringify(clients));
+        console.log('Client deleted successfully for srno:', srno);
+        loadClients();
+      }
+    }
+
+    // Export data to JSON
+    function exportData() {
+      const json = JSON.stringify(clients, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'clients.json';
+      a.click();
+      URL.revokeObjectURL(url);
+      console.log('Data exported successfully');
+    }
+
+    // Import data from JSON
+    function importData(event) {
+      const file = event.target.files[0];
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          clients = data;
+          localStorage.setItem('clients', JSON.stringify(clients));
+          console.log('Data imported successfully');
+          loadClients();
+        } catch (err) {
+          console.error('Error importing data:', err);
+          document.getElementById('debug').textContent = 'Error importing data: ' + err.message;
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // Generic search function
+    function searchTable() {
+      const searchTerm = document.getElementById('search').value.toLowerCase();
+      const rows = document.getElementById('clientList').getElementsByTagName('tr');
+      for (let i = 0; i < rows.length; i++) {
+        let match = false;
+        const cells = rows[i].getElementsByTagName('td');
+        for (let j = 0; j < cells.length - 1; j++) {
+          if (cells[j].textContent.toLowerCase().includes(searchTerm)) {
+            match = true;
+            break;
+          }
+        }
+        rows[i].style.display = match ? '' : 'none';
+      }
+    }
+
+    // Initial load
+    document.addEventListener('DOMContentLoaded', loadClients);
   </script>
 </body>
 </html>
