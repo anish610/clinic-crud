@@ -5,20 +5,83 @@
     box-sizing: border-box;
   }
   
-  /* Body styling for a clean background and font */
+  /* Body styling for a clean, professional look */
   body {
-    font-family: Arial, sans-serif;
-    background-color: #f5f5f5;
+    font-family: 'Arial', sans-serif;
+    background-color: #f0f7f4; /* Light green for a natural, homeopathy feel */
     padding: 20px;
     line-height: 1.6;
+    color: #2c4a4d; /* Deep teal for text */
   }
   
   /* Header styling */
   h1 {
-    color: #2c3e50;
+    color: #2c4a4d;
     text-align: center;
     margin-bottom: 20px;
     font-size: 24px;
+  }
+  
+  h2 {
+    color: #2c4a4d;
+    font-size: 18px;
+    margin-bottom: 15px;
+  }
+  
+  /* Form container styling */
+  .form-container {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    border-left: 4px solid #4CAF50; /* Green accent for homeopathy */
+  }
+  
+  /* Labels and Inputs */
+  label {
+    display: block;
+    margin-bottom: 5px;
+    color: #2c4a4d;
+    font-weight: bold;
+  }
+  
+  input, textarea {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: border-color 0.3s ease;
+  }
+  
+  textarea {
+    resize: vertical;
+    min-height: 80px;
+  }
+  
+  input:focus, textarea:focus {
+    outline: none;
+    border-color: #4CAF50;
+    box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+  }
+  
+  /* Button styling */
+  button {
+    background-color: #4CAF50; /* Green for a natural, healing feel */
+    color: #fff;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s ease;
+    margin-right: 10px;
+  }
+  
+  button:hover {
+    background-color: #45a049;
   }
   
   /* Table styling */
@@ -26,7 +89,7 @@
     border-collapse: collapse;
     width: 100%;
     background-color: #fff;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     margin-top: 20px;
   }
   
@@ -34,78 +97,49 @@
     border: 1px solid #ddd;
     padding: 12px;
     text-align: left;
+    font-size: 14px;
   }
   
   th {
-    background-color: #2c3e50;
+    background-color: #4CAF50;
     color: #fff;
     font-weight: bold;
   }
   
   td {
-    color: #34495e;
+    color: #333;
   }
   
-  /* Form container styling */
-  .form-container {
-    background-color: #fff;
-    padding: 20px;
-    border-radius: 5px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    margin-bottom: 20px;
-  }
-  
-  /* Input fields styling */
-  input {
-    width: 100%;
-    padding: 8px;
-    margin-bottom: 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 14px;
-  }
-  
-  input:focus {
-    outline: none;
-    border-color: #2c3e50;
-    box-shadow: 0 0 5px rgba(44, 62, 80, 0.3);
-  }
-  
-  /* Button styling */
-  button {
-    background-color: #2c3e50;
-    color: #fff;
-    padding: 10px 15px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: background-color 0.3s;
-  }
-  
-  button:disabled {
-    background-color: #cccccc;
-    cursor: not-allowed;
-  }
-  
-  button:hover:not(:disabled) {
-    background-color: #34495e;
-  }
-  
-  /* Authentication status and container */
-  #auth {
+  /* Login and Error Styling */
+  #login {
     text-align: center;
     margin-bottom: 20px;
   }
   
-  #status {
-    color: #34495e;
+  #app {
+    display: none; /* Hidden until password is entered */
+  }
+  
+  #error {
+    text-align: center;
     margin-top: 10px;
   }
   
   /* Responsive design */
   @media (max-width: 768px) {
-    table, .form-container {
+    body {
+      padding: 10px;
+    }
+  
+    h1 {
+      font-size: 20px;
+    }
+  
+    h2 {
+      font-size: 16px;
+    }
+  
+    .form-container, table {
       width: 100%;
       margin: 0 auto;
     }
@@ -115,8 +149,19 @@
       font-size: 12px;
     }
   
-    input, button {
+    input, textarea, button {
       font-size: 12px;
-      padding: 6px;
+      padding: 8px;
     }
+  
+    button {
+      width: 100%;
+      margin-bottom: 10px;
+    }
+  }
+  
+  /* Accessibility: Focus states for keyboard navigation */
+  button:focus, input:focus, textarea:focus {
+    outline: 2px solid #4CAF50;
+    outline-offset: 2px;
   }

@@ -2,15 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  
-  <title>Clinic Patient CRUD</title>
+  <title>Homeopathy Clinic Management</title>
   <link rel="stylesheet" href="style.css">
-  <style>
- 
-
-  </style>
- 
-
 </head>
 <body>
   <!-- Password Prompt -->
@@ -22,30 +15,34 @@
 
   <!-- Main App (Hidden Initially) -->
   <div id="app">
-    <h1>Clinic Patient Management</h1>
-    
-    <!-- Authentication -->
-    <div id="auth">
-      <button onclick="handleAuth()">Sign In with Google</button>
-      <p id="status">Not signed in</p>
-    </div>
+    <h1>Homeopathy Clinic Management</h1>
 
-    <!-- Add Patient Form -->
+    <!-- Add Client Form -->
     <div class="form-container">
-      <input id="srno" placeholder="Srno (Auto-generated)" disabled>
+      <h2>Add Patient Record</h2>
+      <label for="date">Date (dd-mm-yyyy):</label>
       <input id="date" type="date" required>
-      <input id="patientName" placeholder="Patient Name" required>
-      <input id="age" type="number" placeholder="Age" required>
-      <input id="phoneNo" placeholder="Phone No" required>
-      <input id="diagnosis" placeholder="Diagnosis">
-      <input id="case" placeholder="Case">
-      <input id="remedy" placeholder="Remedy">
-      <input id="payment" type="number" placeholder="Payment (INR)" required>
-      <button onclick="addPatient()" disabled id="addBtn">Add Patient</button>
+      <label for="name">Patient Name:</label>
+      <input id="name" placeholder="e.g., Ramesh" required>
+      <label for="age">Age:</label>
+      <input id="age" type="number" placeholder="e.g., 25" required>
+      <label for="phone">Phone No:</label>
+      <input id="phone" placeholder="e.g., 643463463" required>
+      <label for="diagnosis">Diagnosis/Symptoms:</label>
+      <textarea id="diagnosis" placeholder="e.g., TB (Enter symptoms or diagnosis)" rows="3"></textarea>
+      <label for="case">Case Details:</label>
+      <textarea id="case" placeholder="e.g., Sensitive (Enter case notes)" rows="3"></textarea>
+      <label for="remedy">Remedy:</label>
+      <textarea id="remedy" placeholder="e.g., Arnica 30C (Enter remedy details)" rows="3"></textarea>
+      <label for="payment">Payment (INR):</label>
+      <input id="payment" type="number" placeholder="e.g., 500" required>
+      <button onclick="addClient()">Add Patient</button>
+      <button onclick="exportData()">Export Data</button>
+      <input type="file" id="importFile" accept=".json" onchange="importData(event)">
     </div>
 
-    <!-- Patient Table -->
-    <table id="patientTable">
+    <!-- Client Table -->
+    <table id="clientTable">
       <thead>
         <tr>
           <th>Srno</th>
@@ -53,27 +50,65 @@
           <th>Patient Name</th>
           <th>Age</th>
           <th>Phone No</th>
-          <th>Diagnosis</th>
-          <th>Case</th>
+          <th>Diagnosis/Symptoms</th>
+          <th>Case Details</th>
           <th>Remedy</th>
-          <th>Payment</th>
+          <th>Payment (INR)</th>
           <th>Actions</th>
         </tr>
       </thead>
-      <tbody id="patientList"></tbody>
+      <tbody id="clientList"></tbody>
     </table>
+
+    <!-- Edit Form (Hidden Initially) -->
+    <div id="editForm" class="form-container" style="display: none;">
+      <h2>Edit Patient Record</h2>
+      <label for="editDate">Date (dd-mm-yyyy):</label>
+      <input id="editDate" type="date" required>
+      <label for="editName">Patient Name:</label>
+      <input id="editName" required>
+      <label for="editAge">Age:</label>
+      <input id="editAge" type="number" required>
+      <label for="editPhone">Phone No:</label>
+      <input id="editPhone" required>
+      <label for="editDiagnosis">Diagnosis/Symptoms:</label>
+      <textarea id="editDiagnosis" rows="3"></textarea>
+      <label for="editCase">Case Details:</label>
+      <textarea id="editCase" rows="3"></textarea>
+      <label for="editRemedy">Remedy:</label>
+      <textarea id="editRemedy" rows="3"></textarea>
+      <label for="editPayment">Payment (INR):</label>
+      <input id="editPayment" type="number" required>
+      <button onclick="saveEdit()">Save Changes</button>
+      <button onclick="cancelEdit()">Cancel</button>
+    </div>
   </div>
 
-  <script src="https://apis.google.com/js/api.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
   <script>
-    const CORRECT_PASSWORD = "blue"; // Change this to your password
-    const CLIENT_ID = '178933732517-v6p98sjterkm3lgvmtj3ihm9fiha0k9e.apps.googleusercontent.com'; // From Google Cloud Console
-    const API_KEY = 'AIzaSyDOAKQDcx8E6XhbuoKO5VAIC9jkX5LeIko'; // From Google Cloud Console
-    const SPREADSHEET_ID = '1Z3EOg9XJopVwSby0z5hDuimgx8Ne7HXna2Cwwqi_1lk';
-    const RANGE = 'Sheet1!A2:J'; // Adjusted for 9 columns + Actions
-    const SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
+    const CORRECT_PASSWORD = "yourSecretPassword"; // Change this to your password
+    let db = null;
+    let editingId = null;
 
-    let isSignedIn = false;
+    // Initialize SQLite database
+    async function initDB() {
+      const SQL = await initSqlJs({ locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}` });
+      db = new SQL.Database();
+      db.run(`
+        CREATE TABLE IF NOT EXISTS Clients (
+          srno INTEGER PRIMARY KEY,
+          date TEXT,
+          name TEXT,
+          age INTEGER,
+          phone TEXT,
+          diagnosis TEXT,
+          caseDetails TEXT,
+          remedy TEXT,
+          payment INTEGER
+        );
+      `);
+      loadClients();
+    }
 
     function checkPassword() {
       const input = document.getElementById('password').value;
@@ -81,7 +116,7 @@
         localStorage.setItem('clinicAuth', 'true');
         document.getElementById('login').style.display = 'none';
         document.getElementById('app').style.display = 'block';
-        gapi.load('client:auth2', initClient);
+        initDB();
       } else {
         document.getElementById('error').textContent = 'Incorrect password';
       }
@@ -91,42 +126,16 @@
     if (localStorage.getItem('clinicAuth') === 'true') {
       document.getElementById('login').style.display = 'none';
       document.getElementById('app').style.display = 'block';
-      gapi.load('client:auth2', initClient);
+      initDB();
     }
 
-    function initClient() {
-      gapi.client.init({
-        apiKey: API_KEY,
-        clientId: CLIENT_ID,
-        scope: SCOPE,
-        discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
-      }).then(() => {
-        gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
-        updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
-      });
-    }
-
-    function updateSigninStatus(signedIn) {
-      isSignedIn = signedIn;
-      document.getElementById('status').textContent = signedIn ? 'Signed in' : 'Not signed in';
-      document.getElementById('addBtn').disabled = !signedIn;
-      if (signedIn) loadPatients();
-    }
-
-    function handleAuth() {
-      if (isSignedIn) gapi.auth2.getAuthInstance().signOut();
-      else gapi.auth2.getAuthInstance().signIn();
-    }
-
-    function loadPatients() {
-      gapi.client.sheets.spreadsheets.values.get({
-        spreadsheetId: SPREADSHEET_ID,
-        range: RANGE,
-      }).then(response => {
-        const data = response.result.values || [];
-        const tbody = document.getElementById('patientList');
-        tbody.innerHTML = '';
-        data.forEach((row, index) => {
+    function loadClients() {
+      const result = db.exec("SELECT * FROM Clients");
+      const tbody = document.getElementById('clientList');
+      tbody.innerHTML = '';
+      if (result.length > 0) {
+        const rows = result[0].values;
+        rows.forEach((row, index) => {
           const tr = document.createElement('tr');
           tr.innerHTML = `
             <td>${row[0]}</td>
@@ -139,61 +148,139 @@
             <td>${row[7]}</td>
             <td>${row[8]}</td>
             <td>
-              <button onclick="editPatient(${index})">Edit</button>
-              <button onclick="deletePatient(${index})">Delete</button>
+              <button onclick="editClient(${row[0]})">Edit</button>
+              <button onclick="deleteClient(${row[0]})">Delete</button>
             </td>`;
           tbody.appendChild(tr);
         });
-      });
+      }
     }
 
-    function addPatient() {
-      const patient = [
-        Date.now(), // Auto-generated Srno (unique ID)
-        document.getElementById('date').value,
-        document.getElementById('patientName').value,
-        document.getElementById('age').value,
-        document.getElementById('phoneNo').value,
-        document.getElementById('diagnosis').value,
-        document.getElementById('case').value,
-        document.getElementById('remedy').value,
-        document.getElementById('payment').value,
-      ];
-      gapi.client.sheets.spreadsheets.values.append({
-        spreadsheetId: SPREADSHEET_ID,
-        range: 'Sheet1!A:J',
-        valueInputOption: 'RAW',
-        resource: { values: [patient] },
-      }).then(() => {
-        loadPatients();
-        clearForm();
-      });
+    function addClient() {
+      const date = document.getElementById('date').value;
+      const name = document.getElementById('name').value;
+      const age = document.getElementById('age').value;
+      const phone = document.getElementById('phone').value;
+      const diagnosis = document.getElementById('diagnosis').value;
+      const caseDetails = document.getElementById('case').value;
+      const remedy = document.getElementById('remedy').value;
+      const payment = document.getElementById('payment').value;
+
+      if (!date || !name || !age || !phone || !payment) {
+        alert('Date, Name, Age, Phone, and Payment are required');
+        return;
+      }
+
+      // Validate date format (handled by type="date" input)
+      db.run(
+        "INSERT INTO Clients (srno, date, name, age, phone, diagnosis, caseDetails, remedy, payment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [Date.now(), date, name, age, phone, diagnosis, caseDetails, remedy, payment]
+      );
+      loadClients();
+      clearForm();
     }
 
     function clearForm() {
-      document.getElementById('srno').value = '';
       document.getElementById('date').value = '';
-      document.getElementById('patientName').value = '';
+      document.getElementById('name').value = '';
       document.getElementById('age').value = '';
-      document.getElementById('phoneNo').value = '';
+      document.getElementById('phone').value = '';
       document.getElementById('diagnosis').value = '';
       document.getElementById('case').value = '';
       document.getElementById('remedy').value = '';
       document.getElementById('payment').value = '';
     }
 
-    function editPatient(index) {
-      alert('Edit not fully implemented. Update manually in Google Sheets for now.');
-      // Full edit would require prompting for new values and updating the specific row
+    function editClient(srno) {
+      const result = db.exec("SELECT * FROM Clients WHERE srno = ?", [srno]);
+      if (result.length > 0) {
+        const row = result[0].values[0];
+        document.getElementById('editDate').value = row[1];
+        document.getElementById('editName').value = row[2];
+        document.getElementById('editAge').value = row[3];
+        document.getElementById('editPhone').value = row[4];
+        document.getElementById('editDiagnosis').value = row[5];
+        document.getElementById('editCase').value = row[6];
+        document.getElementById('editRemedy').value = row[7];
+        document.getElementById('editPayment').value = row[8];
+        editingId = srno;
+        document.getElementById('editForm').style.display = 'block';
+      }
     }
 
-    function deletePatient(index) {
-      gapi.client.sheets.spreadsheets.values.update({
-        spreadsheetId: SPREADSHEET_ID,
-        range: `Sheet1!A${index + 2}:J${index + 2}`,
-        valueInputOption: 'RAW',
-        resource: { values: [['', '', '', '', '', '', '', '', '']] },
-      }).then(() => loadPatients());
+    function saveEdit() {
+      const date = document.getElementById('editDate').value;
+      const name = document.getElementById('editName').value;
+      const age = document.getElementById('editAge').value;
+      const phone = document.getElementById('editPhone').value;
+      const diagnosis = document.getElementById('editDiagnosis').value;
+      const caseDetails = document.getElementById('editCase').value;
+      const remedy = document.getElementById('editRemedy').value;
+      const payment = document.getElementById('editPayment').value;
+
+      if (!date || !name || !age || !phone || !payment) {
+        alert('Date, Name, Age, Phone, and Payment are required');
+        return;
+      }
+
+      db.run(
+        "UPDATE Clients SET date = ?, name = ?, age = ?, phone = ?, diagnosis = ?, caseDetails = ?, remedy = ?, payment = ? WHERE srno = ?",
+        [date, name, age, phone, diagnosis, caseDetails, remedy, payment, editingId]
+      );
+      cancelEdit();
+      loadClients();
+    }
+
+    function cancelEdit() {
+      document.getElementById('editForm').style.display = 'none';
+      editingId = null;
+    }
+
+    function deleteClient(srno) {
+      db.run("DELETE FROM Clients WHERE srno = ?", [srno]);
+      loadClients();
+    }
+
+    // Export data to JSON
+    function exportData() {
+      const result = db.exec("SELECT * FROM Clients");
+      const data = result[0].values.map(row => ({
+        srno: row[0],
+        date: row[1],
+        name: row[2],
+        age: row[3],
+        phone: row[4],
+        diagnosis: row[5],
+        caseDetails: row[6],
+        remedy: row[7],
+        payment: row[8]
+      }));
+      const json = JSON.stringify(data, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'clients.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // Import data from JSON
+    function importData(event) {
+      const file = event.target.files[0];
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const data = JSON.parse(e.target.result);
+        db.run("DELETE FROM Clients"); // Clear existing data
+        data.forEach(client => {
+          db.run(
+            "INSERT INTO Clients (srno, date, name, age, phone, diagnosis, caseDetails, remedy, payment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [client.srno, client.date, client.name, client.age, client.phone, client.diagnosis, client.caseDetails, client.remedy, client.payment]
+          );
+        });
+        loadClients();
+      };
+      reader.readAsText(file);
     }
   </script>
 </body>
