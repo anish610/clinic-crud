@@ -4,13 +4,30 @@
   <meta charset="UTF-8">
   <title>Homeopathy Clinic Management</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    #login {
+      display: block !important;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    #app {
+      display: none;
+    }
+    #debug {
+      color: #34495e;
+      text-align: center;
+      margin-top: 10px;
+    }
+  </style>
 </head>
 <body>
   <!-- Password Prompt -->
   <div id="login">
+    <h2>Login</h2>
     <input id="password" type="password" placeholder="Enter Password">
     <button onclick="checkPassword()">Login</button>
     <p id="error" style="color: red;"></p>
+    <button onclick="resetAuth()">Reset Login</button> <!-- Added for debugging -->
   </div>
 
   <!-- Main App (Hidden Initially) -->
@@ -84,203 +101,235 @@
     </div>
   </div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
+  <div id="debug"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js" onload="onSqlLoad()" onerror="onSqlError()"></script>
   <script>
-    const CORRECT_PASSWORD = "blue"; // Change this to your password
     let db = null;
     let editingId = null;
 
-    // Initialize SQLite database
-    async function initDB() {
-      const SQL = await initSqlJs({ locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}` });
-      db = new SQL.Database();
-      db.run(`
-        CREATE TABLE IF NOT EXISTS Clients (
-          srno INTEGER PRIMARY KEY,
-          date TEXT,
-          name TEXT,
-          age INTEGER,
-          phone TEXT,
-          diagnosis TEXT,
-          caseDetails TEXT,
-          remedy TEXT,
-          payment INTEGER
-        );
-      `);
-      loadClients();
+    function onSqlLoad() {
+      console.log('sql.js loaded successfully');
+      initApp();
     }
 
-    function checkPassword() {
-      const input = document.getElementById('password').value;
-      if (input === CORRECT_PASSWORD) {
-        localStorage.setItem('clinicAuth', 'true');
+    function onSqlError() {
+      console.error('Failed to load sql.js');
+      document.getElementById('debug').textContent = 'Error: Failed to load database library. Check console.';
+    }
+
+    function initApp() {
+      document.getElementById('login').style.display = 'block'; // Ensure login is visible
+      const CORRECT_PASSWORD = "yourSecretPassword"; // Change this to your password
+
+      // Initialize SQLite database
+      async function initDB() {
+        try {
+          const SQL = await initSqlJs({ locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}` });
+          db = new SQL.Database();
+          db.run(`
+            CREATE TABLE IF NOT EXISTS Clients (
+              srno INTEGER PRIMARY KEY,
+              date TEXT,
+              name TEXT,
+              age INTEGER,
+              phone TEXT,
+              diagnosis TEXT,
+              caseDetails TEXT,
+              remedy TEXT,
+              payment INTEGER
+            );
+          `);
+          loadClients();
+        } catch (err) {
+          console.error('DB init error:', err);
+          document.getElementById('debug').textContent = 'Database initialization failed. Check console.';
+        }
+      }
+
+      function checkPassword() {
+        console.log('checkPassword called with:', document.getElementById('password').value);
+        const input = document.getElementById('password').value;
+        if (input === CORRECT_PASSWORD) {
+          console.log('Password correct, proceeding to login');
+          localStorage.setItem('clinicAuth', 'true');
+          document.getElementById('login').style.display = 'none';
+          document.getElementById('app').style.display = 'block';
+          document.getElementById('debug').textContent = 'Logged in successfully';
+          initDB();
+        } else {
+          document.getElementById('error').textContent = 'Incorrect password';
+          console.log('Password incorrect');
+        }
+      }
+
+      // Check if already authenticated
+      if (localStorage.getItem('clinicAuth') === 'true') {
+        console.log('Authenticated via localStorage');
         document.getElementById('login').style.display = 'none';
         document.getElementById('app').style.display = 'block';
+        document.getElementById('debug').textContent = 'Auto-logged in via localStorage';
         initDB();
-      } else {
-        document.getElementById('error').textContent = 'Incorrect password';
-      }
-    }
-
-    // Check if already authenticated
-    if (localStorage.getItem('clinicAuth') === 'true') {
-      document.getElementById('login').style.display = 'none';
-      document.getElementById('app').style.display = 'block';
-      initDB();
-    }
-
-    function loadClients() {
-      const result = db.exec("SELECT * FROM Clients");
-      const tbody = document.getElementById('clientList');
-      tbody.innerHTML = '';
-      if (result.length > 0) {
-        const rows = result[0].values;
-        rows.forEach((row, index) => {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${row[0]}</td>
-            <td>${row[1]}</td>
-            <td>${row[2]}</td>
-            <td>${row[3]}</td>
-            <td>${row[4]}</td>
-            <td>${row[5]}</td>
-            <td>${row[6]}</td>
-            <td>${row[7]}</td>
-            <td>${row[8]}</td>
-            <td>
-              <button onclick="editClient(${row[0]})">Edit</button>
-              <button onclick="deleteClient(${row[0]})">Delete</button>
-            </td>`;
-          tbody.appendChild(tr);
-        });
-      }
-    }
-
-    function addClient() {
-      const date = document.getElementById('date').value;
-      const name = document.getElementById('name').value;
-      const age = document.getElementById('age').value;
-      const phone = document.getElementById('phone').value;
-      const diagnosis = document.getElementById('diagnosis').value;
-      const caseDetails = document.getElementById('case').value;
-      const remedy = document.getElementById('remedy').value;
-      const payment = document.getElementById('payment').value;
-
-      if (!date || !name || !age || !phone || !payment) {
-        alert('Date, Name, Age, Phone, and Payment are required');
-        return;
       }
 
-      // Validate date format (handled by type="date" input)
-      db.run(
-        "INSERT INTO Clients (srno, date, name, age, phone, diagnosis, caseDetails, remedy, payment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        [Date.now(), date, name, age, phone, diagnosis, caseDetails, remedy, payment]
-      );
-      loadClients();
-      clearForm();
-    }
-
-    function clearForm() {
-      document.getElementById('date').value = '';
-      document.getElementById('name').value = '';
-      document.getElementById('age').value = '';
-      document.getElementById('phone').value = '';
-      document.getElementById('diagnosis').value = '';
-      document.getElementById('case').value = '';
-      document.getElementById('remedy').value = '';
-      document.getElementById('payment').value = '';
-    }
-
-    function editClient(srno) {
-      const result = db.exec("SELECT * FROM Clients WHERE srno = ?", [srno]);
-      if (result.length > 0) {
-        const row = result[0].values[0];
-        document.getElementById('editDate').value = row[1];
-        document.getElementById('editName').value = row[2];
-        document.getElementById('editAge').value = row[3];
-        document.getElementById('editPhone').value = row[4];
-        document.getElementById('editDiagnosis').value = row[5];
-        document.getElementById('editCase').value = row[6];
-        document.getElementById('editRemedy').value = row[7];
-        document.getElementById('editPayment').value = row[8];
-        editingId = srno;
-        document.getElementById('editForm').style.display = 'block';
-      }
-    }
-
-    function saveEdit() {
-      const date = document.getElementById('editDate').value;
-      const name = document.getElementById('editName').value;
-      const age = document.getElementById('editAge').value;
-      const phone = document.getElementById('editPhone').value;
-      const diagnosis = document.getElementById('editDiagnosis').value;
-      const caseDetails = document.getElementById('editCase').value;
-      const remedy = document.getElementById('editRemedy').value;
-      const payment = document.getElementById('editPayment').value;
-
-      if (!date || !name || !age || !phone || !payment) {
-        alert('Date, Name, Age, Phone, and Payment are required');
-        return;
+      function loadClients() {
+        const result = db.exec("SELECT * FROM Clients");
+        const tbody = document.getElementById('clientList');
+        tbody.innerHTML = '';
+        if (result.length > 0) {
+          const rows = result[0].values;
+          rows.forEach((row, index) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${row[0]}</td>
+              <td>${row[1]}</td>
+              <td>${row[2]}</td>
+              <td>${row[3]}</td>
+              <td>${row[4]}</td>
+              <td>${row[5]}</td>
+              <td>${row[6]}</td>
+              <td>${row[7]}</td>
+              <td>${row[8]}</td>
+              <td>
+                <button onclick="editClient(${row[0]})">Edit</button>
+                <button onclick="deleteClient(${row[0]})">Delete</button>
+              </td>`;
+            tbody.appendChild(tr);
+          });
+        }
       }
 
-      db.run(
-        "UPDATE Clients SET date = ?, name = ?, age = ?, phone = ?, diagnosis = ?, caseDetails = ?, remedy = ?, payment = ? WHERE srno = ?",
-        [date, name, age, phone, diagnosis, caseDetails, remedy, payment, editingId]
-      );
-      cancelEdit();
-      loadClients();
-    }
+      function addClient() {
+        const date = document.getElementById('date').value;
+        const name = document.getElementById('name').value;
+        const age = document.getElementById('age').value;
+        const phone = document.getElementById('phone').value;
+        const diagnosis = document.getElementById('diagnosis').value;
+        const caseDetails = document.getElementById('case').value;
+        const remedy = document.getElementById('remedy').value;
+        const payment = document.getElementById('payment').value;
 
-    function cancelEdit() {
-      document.getElementById('editForm').style.display = 'none';
-      editingId = null;
-    }
+        if (!date || !name || !age || !phone || !payment) {
+          alert('Date, Name, Age, Phone, and Payment are required');
+          return;
+        }
 
-    function deleteClient(srno) {
-      db.run("DELETE FROM Clients WHERE srno = ?", [srno]);
-      loadClients();
-    }
-
-    // Export data to JSON
-    function exportData() {
-      const result = db.exec("SELECT * FROM Clients");
-      const data = result[0].values.map(row => ({
-        srno: row[0],
-        date: row[1],
-        name: row[2],
-        age: row[3],
-        phone: row[4],
-        diagnosis: row[5],
-        caseDetails: row[6],
-        remedy: row[7],
-        payment: row[8]
-      }));
-      const json = JSON.stringify(data, null, 2);
-      const blob = new Blob([json], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'clients.json';
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-
-    // Import data from JSON
-    function importData(event) {
-      const file = event.target.files[0];
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const data = JSON.parse(e.target.result);
-        db.run("DELETE FROM Clients"); // Clear existing data
-        data.forEach(client => {
-          db.run(
-            "INSERT INTO Clients (srno, date, name, age, phone, diagnosis, caseDetails, remedy, payment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            [client.srno, client.date, client.name, client.age, client.phone, client.diagnosis, client.caseDetails, client.remedy, client.payment]
-          );
-        });
+        db.run(
+          "INSERT INTO Clients (srno, date, name, age, phone, diagnosis, caseDetails, remedy, payment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          [Date.now(), date, name, age, phone, diagnosis, caseDetails, remedy, payment]
+        );
         loadClients();
-      };
-      reader.readAsText(file);
+        clearForm();
+      }
+
+      function clearForm() {
+        document.getElementById('date').value = '';
+        document.getElementById('name').value = '';
+        document.getElementById('age').value = '';
+        document.getElementById('phone').value = '';
+        document.getElementById('diagnosis').value = '';
+        document.getElementById('case').value = '';
+        document.getElementById('remedy').value = '';
+        document.getElementById('payment').value = '';
+      }
+
+      function editClient(srno) {
+        const result = db.exec("SELECT * FROM Clients WHERE srno = ?", [srno]);
+        if (result.length > 0) {
+          const row = result[0].values[0];
+          document.getElementById('editDate').value = row[1];
+          document.getElementById('editName').value = row[2];
+          document.getElementById('editAge').value = row[3];
+          document.getElementById('editPhone').value = row[4];
+          document.getElementById('editDiagnosis').value = row[5];
+          document.getElementById('editCase').value = row[6];
+          document.getElementById('editRemedy').value = row[7];
+          document.getElementById('editPayment').value = row[8];
+          editingId = srno;
+          document.getElementById('editForm').style.display = 'block';
+        }
+      }
+
+      function saveEdit() {
+        const date = document.getElementById('editDate').value;
+        const name = document.getElementById('editName').value;
+        const age = document.getElementById('editAge').value;
+        const phone = document.getElementById('editPhone').value;
+        const diagnosis = document.getElementById('editDiagnosis').value;
+        const caseDetails = document.getElementById('editCase').value;
+        const remedy = document.getElementById('editRemedy').value;
+        const payment = document.getElementById('editPayment').value;
+
+        if (!date || !name || !age || !phone || !payment) {
+          alert('Date, Name, Age, Phone, and Payment are required');
+          return;
+        }
+
+        db.run(
+          "UPDATE Clients SET date = ?, name = ?, age = ?, phone = ?, diagnosis = ?, caseDetails = ?, remedy = ?, payment = ? WHERE srno = ?",
+          [date, name, age, phone, diagnosis, caseDetails, remedy, payment, editingId]
+        );
+        cancelEdit();
+        loadClients();
+      }
+
+      function cancelEdit() {
+        document.getElementById('editForm').style.display = 'none';
+        editingId = null;
+      }
+
+      function deleteClient(srno) {
+        db.run("DELETE FROM Clients WHERE srno = ?", [srno]);
+        loadClients();
+      }
+
+      // Export data to JSON
+      function exportData() {
+        const result = db.exec("SELECT * FROM Clients");
+        const data = result[0].values.map(row => ({
+          srno: row[0],
+          date: row[1],
+          name: row[2],
+          age: row[3],
+          phone: row[4],
+          diagnosis: row[5],
+          caseDetails: row[6],
+          remedy: row[7],
+          payment: row[8]
+        }));
+        const json = JSON.stringify(data, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'clients.json';
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      // Import data from JSON
+      function importData(event) {
+        const file = event.target.files[0];
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const data = JSON.parse(e.target.result);
+          db.run("DELETE FROM Clients"); // Clear existing data
+          data.forEach(client => {
+            db.run(
+              "INSERT INTO Clients (srno, date, name, age, phone, diagnosis, caseDetails, remedy, payment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+              [client.srno, client.date, client.name, client.age, client.phone, client.diagnosis, client.caseDetails, client.remedy, client.payment]
+            );
+          });
+          loadClients();
+        };
+        reader.readAsText(file);
+      }
+
+      // Reset authentication for debugging
+      function resetAuth() {
+        localStorage.removeItem('clinicAuth');
+        location.reload();
+      }
     }
   </script>
 </body>
