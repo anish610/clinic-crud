@@ -2,139 +2,197 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Dr Smital's Homeopathy Clinic App</title>
+  <title>Dr Smital's Homoeopathy Clinic App</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    #authContainer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    #authBox {
+      background: white;
+      padding: 20px;
+      border-radius: 5px;
+      text-align: center;
+    }
+    #mainContent {
+      display: none;
+    }
+  </style>
 </head>
 <body>
-  <h1>Dr Smital's Homeopathy Clinic App</h1>
-
-  <!-- Add Client Form -->
-  <div class="form-container">
-    <h2>Add Patient Record</h2>
-    <div class="form-group">
-      <label for="date">Date (dd-mm-yyyy):</label>
-      <input id="date" type="date" required>
-    </div>
-    <div class="form-group">
-      <label for="patientId">Patient ID:</label>
-      <input id="patientId" type="text" readonly>
-    </div>
-    <div class="form-group">
-      <label for="name">Patient Name:</label>
-      <input id="name" list="nameSuggestions" placeholder="e.g., Ramesh" required oninput="updateSuggestions()">
-      <datalist id="nameSuggestions"></datalist>
-    </div>
-    <div class="form-group">
-      <label for="age">Age:</label>
-      <input id="age" type="number" placeholder="e.g., 25" required>
-    </div>
-    <div class="form-group">
-      <label for="phone">Phone No:</label>
-      <input id="phone" placeholder="e.g., 9936374844" required>
-    </div>
-    <div class="form-group">
-      <label for="diagnosis">Diagnosis/Symptoms:</label>
-      <textarea id="diagnosis" placeholder="e.g., TB (Enter symptoms or diagnosis)" rows="3"></textarea>
-    </div>
-    <div class="form-group">
-      <label for="case">Case Details:</label>
-      <textarea id="case" placeholder="e.g., Sensitive (Enter case notes)" rows="3"></textarea>
-    </div>
-    <div class="form-group">
-      <label for="remedy">Remedy:</label>
-      <textarea id="remedy" placeholder="e.g., Arnica 30C (Enter remedy details)" rows="3"></textarea>
-    </div>
-    <div class="form-group">
-      <label for="payment">Payment (INR):</label>
-      <input id="payment" type="number" placeholder="e.g., 500" required>
-    </div>
-    <div class="form-actions">
-      <button onclick="addClient()">Add Patient</button>
+  <!-- Authentication Container -->
+  <div id="authContainer">
+    <div id="authBox">
+      <h2>Enter Password</h2>
+      <input type="password" id="passwordInput" placeholder="Password" autofocus>
+      <br><br>
+      <button onclick="checkPassword()">Submit</button>
+      <p id="errorMessage" style="color: red; display: none;">Incorrect password!</p>
     </div>
   </div>
 
-  <!-- Search Input -->
-  <div class="search-container">
-    <label for="search">Search:</label>
-    <input id="search" type="text" placeholder="Search all fields..." oninput="searchTable()">
+  <!-- Main Content -->
+  <div id="mainContent">
+    <h1>Dr Smital's Homoeopathy Clinic App</h1>
+
+    <!-- Add Client Form -->
+    <div class="form-container">
+      <h2>Add Patient Record</h2>
+      <div class="form-group">
+        <label for="date">Date (dd-mm-yyyy):</label>
+        <input id="date" type="date" required>
+      </div>
+      <div class="form-group">
+        <label for="patientId">Patient ID:</label>
+        <input id="patientId" type="text" readonly>
+      </div>
+      <div class="form-group">
+        <label for="name">Patient Name:</label>
+        <input id="name" list="nameSuggestions" placeholder="e.g., Ramesh" required oninput="updateSuggestions()">
+        <datalist id="nameSuggestions"></datalist>
+      </div>
+      <div class="form-group">
+        <label for="age">Age:</label>
+        <input id="age" type="number" placeholder="e.g., 25" required>
+      </div>
+      <div class="form-group">
+        <label for="phone">Phone No:</label>
+        <input id="phone" placeholder="e.g., 9936374844" required>
+      </div>
+      <div class="form-group">
+        <label for="diagnosis">Diagnosis/Symptoms:</label>
+        <textarea id="diagnosis" placeholder="e.g., TB (Enter symptoms or diagnosis)" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="case">Case Details:</label>
+        <textarea id="case" placeholder="e.g., Sensitive (Enter case notes)" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="remedy">Remedy:</label>
+        <textarea id="remedy" placeholder="e.g., Arnica 30C (Enter remedy details)" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="payment">Payment (INR):</label>
+        <input id="payment" type="number" placeholder="e.g., 500" required>
+      </div>
+      <div class="form-actions">
+        <button onclick="addClient()">Add Patient</button>
+      </div>
+    </div>
+
+    <!-- Search Input -->
+    <div class="search-container">
+      <label for="search">Search:</label>
+      <input id="search" type="text" placeholder="Search all fields..." oninput="searchTable()">
+    </div>
+
+    <!-- Client Table -->
+    <table id="clientTable">
+      <thead>
+        <tr>
+          <th>Srno</th>
+          <th>Patient ID</th>
+          <th>Date</th>
+          <th>Patient Name</th>
+          <th>Age</th>
+          <th>Phone No</th>
+          <th>Diagnosis/Symptoms</th>
+          <th>Case Details</th>
+          <th>Remedy</th>
+          <th>Payment (INR)</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="clientList"></tbody>
+    </table>
+
+    <!-- Edit Form (Hidden Initially) -->
+    <div id="editForm" class="form-container" style="display: none;">
+      <h2>Edit Patient Record</h2>
+      <div class="form-group">
+        <label for="editDate">Date (dd-mm-yyyy):</label>
+        <input id="editDate" type="date" required>
+      </div>
+      <div class="form-group">
+        <label for="editPatientId">Patient ID:</label>
+        <input id="editPatientId" type="text" readonly>
+      </div>
+      <div class="form-group">
+        <label for="editName">Patient Name:</label>
+        <input id="editName" required>
+      </div>
+      <div class="form-group">
+        <label for="editAge">Age:</label>
+        <input id="editAge" type="number" required>
+      </div>
+      <div class="form-group">
+        <label for="editPhone">Phone No:</label>
+        <input id="editPhone" required>
+      </div>
+      <div class="form-group">
+        <label for="editDiagnosis">Diagnosis/Symptoms:</label>
+        <textarea id="editDiagnosis" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="editCase">Case Details:</label>
+        <textarea id="editCase" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="editRemedy">Remedy:</label>
+        <textarea id="editRemedy" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="editPayment">Payment (INR):</label>
+        <input id="editPayment" type="number" required>
+      </div>
+      <div class="form-actions">
+        <button onclick="saveEdit()">Save Changes</button>
+        <button onclick="cancelEdit()">Cancel</button>
+      </div>
+    </div>
+
+    <div id="debug" style="color: #34495e; text-align: center; margin-top: 10px;"></div>
   </div>
-
-  <!-- Client Table -->
-  <table id="clientTable">
-    <thead>
-      <tr>
-        <th>Srno</th>
-        <th>Patient ID</th>
-        <th>Date</th>
-        <th>Patient Name</th>
-        <th>Age</th>
-        <th>Phone No</th>
-        <th>Diagnosis/Symptoms</th>
-        <th>Case Details</th>
-        <th>Remedy</th>
-        <th>Payment (INR)</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody id="clientList"></tbody>
-  </table>
-
-  <!-- Edit Form (Hidden Initially) -->
-  <div id="editForm" class="form-container" style="display: none;">
-    <h2>Edit Patient Record</h2>
-    <div class="form-group">
-      <label for="editDate">Date (dd-mm-yyyy):</label>
-      <input id="editDate" type="date" required>
-    </div>
-    <div class="form-group">
-      <label for="editPatientId">Patient ID:</label>
-      <input id="editPatientId" type="text" readonly>
-    </div>
-    <div class="form-group">
-      <label for="editName">Patient Name:</label>
-      <input id="editName" required>
-    </div>
-    <div class="form-group">
-      <label for="editAge">Age:</label>
-      <input id="editAge" type="number" required>
-    </div>
-    <div class="form-group">
-      <label for="editPhone">Phone No:</label>
-      <input id="editPhone" required>
-    </div>
-    <div class="form-group">
-      <label for="editDiagnosis">Diagnosis/Symptoms:</label>
-      <textarea id="editDiagnosis" rows="3"></textarea>
-    </div>
-    <div class="form-group">
-      <label for="editCase">Case Details:</label>
-      <textarea id="editCase" rows="3"></textarea>
-    </div>
-    <div class="form-group">
-      <label for="editRemedy">Remedy:</label>
-      <textarea id="editRemedy" rows="3"></textarea>
-    </div>
-    <div class="form-group">
-      <label for="editPayment">Payment (INR):</label>
-      <input id="editPayment" type="number" required>
-    </div>
-    <div class="form-actions">
-      <button onclick="saveEdit()">Save Changes</button>
-      <button onclick="cancelEdit()">Cancel</button>
-    </div>
-  </div>
-
-  <div id="debug" style="color: #34495e; text-align: center; margin-top: 10px;"></div>
 
   <script>
+    // Hardcoded password (for simplicity; in production, use secure methods)
+    const correctPassword = "star"; // Change this to your desired password
+
+    // Check password
+    function checkPassword() {
+      const inputPassword = document.getElementById('passwordInput').value;
+      if (inputPassword === correctPassword) {
+        document.getElementById('authContainer').style.display = 'none';
+        document.getElementById('mainContent').style.display = 'block';
+      } else {
+        document.getElementById('errorMessage').style.display = 'block';
+        document.getElementById('passwordInput').value = '';
+      }
+    }
+
+    // Allow Enter key to submit password
+    document.getElementById('passwordInput').addEventListener('keypress', function(event) {
+      if (event.key === 'Enter') {
+        checkPassword();
+      }
+    });
+
     // IndexedDB Setup
     const dbName = "ClinicDB";
     const storeName = "clients";
     let db;
     let clients = [];
     let editingId = null;
-    // Replace with your deployed server URL (e.g., from Render)
-    const serverUrl = 'https://clinic-crud.onrender.com'; // Update to 'https://your-app.onrender.com' after deployment
+    const serverUrl = 'https://clinic-crud.onrender.com'; // Update to your server URL
 
     // Open IndexedDB
     const request = indexedDB.open(dbName, 1);
@@ -155,29 +213,25 @@
     // Sync local IndexedDB with server
     async function syncWithServer() {
       try {
-        // Fetch server data
         const response = await fetch(`${serverUrl}/clients`);
         const serverClients = await response.json();
 
         const transaction = db.transaction([storeName], 'readwrite');
         const objectStore = transaction.objectStore(storeName);
         
-        // Get local data
         const localRequest = objectStore.getAll();
         localRequest.onsuccess = async () => {
           const localClients = localRequest.result;
 
-          // Merge logic: Server wins unless local has newer changes
           for (const serverClient of serverClients) {
             const localClient = localClients.find(c => c.srno === serverClient.srno);
             if (!localClient) {
-              objectStore.put(serverClient); // Add new from server
+              objectStore.put(serverClient);
             } else if (!localClient.modified || new Date(localClient.modified) < new Date()) {
-              objectStore.put(serverClient); // Update with server data
+              objectStore.put(serverClient);
             }
           }
 
-          // Push local changes to server
           for (const localClient of localClients) {
             const serverClient = serverClients.find(c => c.srno === localClient.srno);
             if (!serverClient || (localClient.modified && new Date(localClient.modified) > new Date())) {
@@ -194,7 +248,7 @@
         };
       } catch (error) {
         console.error('Sync error:', error);
-        loadClients(); // Load local data if sync fails
+        loadClients();
         document.getElementById('debug').textContent = 'Offline mode: Sync failed.';
       }
     }

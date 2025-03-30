@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dr Smital's Homeopathy Clinic App</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Firebase SDK (v9 Modular) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js"></script>
+</head>
+<body>
+  <h1>Dr Smital's Homeopathy Clinic App</h1>
+
+  <!-- Add Client Form -->
+  <div class="form-container">
+    <h2>Add Patient Record</h2>
+    <div class="form-group">
+      <label for="date">Date (dd-mm-yyyy):</label>
+      <input id="date" type="date" required>
+    </div>
+    <div class="form-group">
+      <label for="patientId">Patient ID:</label>
+      <input id="patientId" type="text" readonly>
+    </div>
+    <div class="form-group">
+      <label for="name">Patient Name:</label>
+      <input id="name" list="nameSuggestions" placeholder="e.g., Ramesh" required oninput="updateSuggestions()">
+      <datalist id="nameSuggestions"></datalist>
+    </div>
+    <div class="form-group">
+      <label for="age">Age:</label>
+      <input id="age" type="number" placeholder="e.g., 25" required>
+    </div>
+    <div class="form-group">
+      <label for="phone">Phone No:</label>
+      <input id="phone" placeholder="e.g., 9936374844" required>
+    </div>
+    <div class="form-group">
+      <label for="diagnosis">Diagnosis/Symptoms:</label>
+      <textarea id="diagnosis" placeholder="e.g., TB (Enter symptoms or diagnosis)" rows="3"></textarea>
+    </div>
+    <div class="form-group">
+      <label for="case">Case Details:</label>
+      <textarea id="case" placeholder="e.g., Sensitive (Enter case notes)" rows="3"></textarea>
+    </div>
+    <div class="form-group">
+      <label for="remedy">Remedy:</label>
+      <textarea id="remedy" placeholder="e.g., Arnica 30C (Enter remedy details)" rows="3"></textarea>
+    </div>
+    <div class="form-group">
+      <label for="payment">Payment (INR):</label>
+      <input id="payment" type="number" placeholder="e.g., 500" required>
+    </div>
+    <div class="form-actions">
+      <button onclick="addClient()">Add Patient</button>
+    </div>
+  </div>
+
+  <!-- Search Input -->
+  <div class="search-container">
+    <label for="search">Search:</label>
+    <input id="search" type="text" placeholder="Search all fields..." oninput="searchTable()">
+  </div>
+
+  <!-- Client Table -->
+  <table id="clientTable">
+    <thead>
+      <tr>
+        <th>Srno</th>
+        <th>Patient ID</th>
+        <th>Date</th>
+        <th>Patient Name</th>
+        <th>Age</th>
+        <th>Phone No</th>
+        <th>Diagnosis/Symptoms</th>
+        <th>Case Details</th>
+        <th>Remedy</th>
+        <th>Payment (INR)</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="clientList"></tbody>
+  </table>
+
+  <!-- Edit Form (Hidden Initially) -->
+  <div id="editForm" class="form-container" style="display: none;">
+    <h2>Edit Patient Record</h2>
+    <div class="form-group">
+      <label for="editDate">Date (dd-mm-yyyy):</label>
+      <input id="editDate" type="date" required>
+    </div>
+    <div class="form-group">
+      <label for="editPatientId">Patient ID:</label>
+      <input id="editPatientId" type="text" readonly>
+    </div>
+    <div class="form-group">
+      <label for="editName">Patient Name:</label>
+      <input id="editName" required>
+    </div>
+    <div class="form-group">
+      <label for="editAge">Age:</label>
+      <input id="editAge" type="number" required>
+    </div>
+    <div class="form-group">
+      <label for="editPhone">Phone No:</label>
+      <input id="editPhone" required>
+    </div>
+    <div class="form-group">
+      <label for="editDiagnosis">Diagnosis/Symptoms:</label>
+      <textarea id="editDiagnosis" rows="3"></textarea>
+    </div>
+    <div class="form-group">
+      <label for="editCase">Case Details:</label>
+      <textarea id="editCase" rows="3"></textarea>
+    </div>
+    <div class="form-group">
+      <label for="editRemedy">Remedy:</label>
+      <textarea id="editRemedy" rows="3"></textarea>
+    </div>
+    <div class="form-group">
+      <label for="editPayment">Payment (INR):</label>
+      <input id="editPayment" type="number" required>
+    </div>
+    <div class="form-actions">
+      <button onclick="saveEdit()">Save Changes</button>
+      <button onclick="cancelEdit()">Cancel</button>
+    </div>
+  </div>
+
+  <div id="debug" style="color: #34495e; text-align: center; margin-top: 10px;"></div>
+
+  <script>
+    // Access Firebase v9 Modular from window namespaces
+    const { initializeApp } = window.firebase_app;
+    const { getDatabase, ref, onValue, set, remove } = window.firebase_database;
+
+    // Initialize Firebase
+    const app = initializeApp({
+      apiKey: "AIzaSyATsRsbF0Tj5kF3XQuoahDMhMbSexVxe6k",
+      authDomain: "drsmitalsclinic.firebaseapp.com",
+      databaseURL: "https://drsmitalsclinic-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "drsmitalsclinic",
+      storageBucket: "drsmitalsclinic.firebasestorage.app",
+      messagingSenderId: "29820683536",
+      appId: "1:29820683536:web:cae35d44dcbeb7295fd195",
+      measurementId: "G-XBDQBQN9Q5"
+    });
+    const db = getDatabase(app);
+    const clientsRef = ref(db, 'clients');
+
+    // Variables declared at the top
+    let clients = [];
+    let editingId = null;
+    let isDataLoaded = false;
+
+    // Function to get the next incremental srno
+    function getNextSrno() {
+      if (clients.length === 0) return 1;
+      const maxSrno = Math.max(...clients.map(client => client.srno || 0));
+      return maxSrno + 1;
+    }
+
+    // Function to generate a random 4-digit patientId
+    function generateRandomPatientId() {
+      return Math.floor(1000 + Math.random() * 9000);
+    }
+
+    // Function to generate or retrieve patientId based on name
+    function getPatientId(name) {
+      const existingClient = clients.find(client => client.name.toLowerCase() === name.toLowerCase());
+      return existingClient ? existingClient.patientId : generateRandomPatientId();
+    }
+
+    // Load clients from Firebase
+    function loadClients() {
+      onValue(clientsRef, (snapshot) => {
+        const data = snapshot.val();
+        clients = data ? Object.values(data) : [];
+        const tbody = document.getElementById('clientList');
+        tbody.innerHTML = '';
+        clients.forEach((client) => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${client.srno || 'N/A'}</td>
+            <td>${client.patientId || 'N/A'}</td>
+            <td>${client.date || ''}</td>
+            <td>${client.name || ''}</td>
+            <td>${client.age !== null ? client.age : ''}</td>
+            <td>${client.phone || ''}</td>
+            <td>${client.diagnosis || ''}</td>
+            <td>${client.caseDetails || ''}</td>
+            <td>${client.remedy || ''}</td>
+            <td>${client.payment !== null ? client.payment : ''}</td>
+            <td>
+              <button onclick="editClient(${client.srno})">Edit</button>
+              <button onclick="deleteClient(${client.srno})">Delete</button>
+            </td>`;
+          tbody.appendChild(tr);
+        });
+        console.log('Clients loaded:', clients.length, 'records');
+        isDataLoaded = true;
+        document.getElementById('debug').textContent = '';
+      }, (error) => {
+        console.error('Error loading clients:', error);
+        document.getElementById('debug').textContent = `Error loading data: ${error.message}`;
+      });
+    }
+
+    // Update name suggestions
+    function updateSuggestions() {
+      if (!isDataLoaded) return;
+      const nameInput = document.getElementById('name');
+      const name = nameInput.value.toLowerCase();
+      const suggestions = document.getElementById('nameSuggestions');
+      suggestions.innerHTML = '';
+
+      if (name.length < 1) return;
+
+      const uniqueNames = [...new Set(clients.map(client => client.name.toLowerCase()))]
+        .filter(n => n.startsWith(name))
+        .map(n => clients.find(c => c.name.toLowerCase() === n));
+
+      uniqueNames.forEach(client => {
+        const option = document.createElement('option');
+        option.value = client.name;
+        option.setAttribute('data-patientId', client.patientId || '');
+        option.setAttribute('data-phone', client.phone || '');
+        option.setAttribute('data-age', client.age !== null ? client.age : '');
+        suggestions.appendChild(option);
+      });
+
+      nameInput.addEventListener('change', function() {
+        const selectedOption = Array.from(suggestions.options).find(opt => opt.value === nameInput.value);
+        if (selectedOption) {
+          document.getElementById('patientId').value = selectedOption.getAttribute('data-patientId') || getPatientId(nameInput.value);
+          document.getElementById('phone').value = selectedOption.getAttribute('data-phone') || '';
+          document.getElementById('age').value = selectedOption.getAttribute('data-age') || '';
+        } else {
+          document.getElementById('patientId').value = getPatientId(nameInput.value);
+        }
+      }, { once: true });
+    }
+
+    // Add a new client to Firebase
+    function addClient() {
+      if (!isDataLoaded) {
+        alert('Please wait, data is still loading...');
+        return;
+      }
+      const date = document.getElementById('date').value;
+      const patientId = document.getElementById('patientId').value;
+      const name = document.getElementById('name').value;
+      const age = document.getElementById('age').value;
+      const phone = document.getElementById('phone').value;
+      const diagnosis = document.getElementById('diagnosis').value;
+      const caseDetails = document.getElementById('case').value;
+      const remedy = document.getElementById('remedy').value;
+      const payment = document.getElementById('payment').value;
+
+      if (!date || !name || !age || !phone || !payment) {
+        alert('Please fill in all required fields: Date, Name, Age, Phone, and Payment');
+        console.log('Validation failed:', { date, name, age, phone, payment });
+        return;
+      }
+
+      const newClient = {
+        srno: getNextSrno(),
+        patientId: patientId || getPatientId(name),
+        date,
+        name,
+        age: parseInt(age),
+        phone,
+        diagnosis: diagnosis || '',
+        caseDetails: caseDetails || '',
+        remedy: remedy || '',
+        payment: parseInt(payment)
+      };
+
+      set(ref(db, `clients/${newClient.srno}`), newClient)
+        .then(() => {
+          console.log('Patient added successfully:', newClient);
+          clearForm();
+          document.getElementById('debug').textContent = 'Patient added successfully!';
+        })
+        .catch(error => {
+          console.error('Error adding patient:', error);
+          document.getElementById('debug').textContent = `Error adding patient: ${error.message}`;
+        });
+    }
+
+    // Clear the form
+    function clearForm() {
+      document.getElementById('date').value = new Date().toISOString().split('T')[0];
+      document.getElementById('patientId').value = '';
+      document.getElementById('name').value = '';
+      document.getElementById('age').value = '';
+      document.getElementById('phone').value = '';
+      document.getElementById('diagnosis').value = '';
+      document.getElementById('case').value = '';
+      document.getElementById('remedy').value = '';
+      document.getElementById('payment').value = '';
+    }
+
+    // Edit a client
+    function editClient(srno) {
+      if (!isDataLoaded) {
+        alert('Please wait, data is still loading...');
+        return;
+      }
+      const client = clients.find(c => c.srno === srno);
+      if (client) {
+        document.getElementById('editDate').value = client.date || '';
+        document.getElementById('editPatientId').value = client.patientId || '';
+        document.getElementById('editName').value = client.name || '';
+        document.getElementById('editAge').value = client.age !== null ? client.age : '';
+        document.getElementById('editPhone').value = client.phone || '';
+        document.getElementById('editDiagnosis').value = client.diagnosis || '';
+        document.getElementById('editCase').value = client.caseDetails || '';
+        document.getElementById('editRemedy').value = client.remedy || '';
+        document.getElementById('editPayment').value = client.payment !== null ? client.payment : '';
+        editingId = srno;
+        document.getElementById('editForm').style.display = 'block';
+        console.log('Edit form populated for srno:', srno);
+      }
+    }
+
+    // Save edited client to Firebase
+    function saveEdit() {
+      if (!isDataLoaded) {
+        alert('Please wait, data is still loading...');
+        return;
+      }
+      const date = document.getElementById('editDate').value;
+      const patientId = document.getElementById('editPatientId').value;
+      const name = document.getElementById('editName').value;
+      const age = document.getElementById('editAge').value;
+      const phone = document.getElementById('editPhone').value;
+      const diagnosis = document.getElementById('editDiagnosis').value;
+      const caseDetails = document.getElementById('editCase').value;
+      const remedy = document.getElementById('editRemedy').value;
+      const payment = document.getElementById('editPayment').value;
+
+      if (!date || !name || !age || !phone || !payment) {
+        alert('Please fill in all required fields: Date, Name, Age, Phone, and Payment');
+        return;
+      }
+
+      const existingClient = clients.find(c => c.srno === editingId);
+      const updatedPatientId = existingClient && name.toLowerCase() === existingClient.name.toLowerCase() 
+        ? patientId 
+        : getPatientId(name);
+
+      const updatedClient = {
+        srno: editingId,
+        patientId: updatedPatientId,
+        date,
+        name,
+        age: parseInt(age),
+        phone,
+        diagnosis: diagnosis || '',
+        caseDetails: caseDetails || '',
+        remedy: remedy || '',
+        payment: parseInt(payment)
+      };
+
+      set(ref(db, `clients/${editingId}`), updatedClient)
+        .then(() => {
+          console.log('Edit saved successfully for srno:', editingId);
+          cancelEdit();
+          document.getElementById('debug').textContent = 'Edit saved successfully!';
+        })
+        .catch(error => {
+          console.error('Error saving edit:', error);
+          document.getElementById('debug').textContent = `Error saving edit: ${error.message}`;
+        });
+    }
+
+    // Cancel edit
+    function cancelEdit() {
+      document.getElementById('editForm').style.display = 'none';
+      editingId = null;
+    }
+
+    // Delete a client from Firebase
+    function deleteClient(srno) {
+      if (!isDataLoaded) {
+        alert('Please wait, data is still loading...');
+        return;
+      }
+      remove(ref(db, `clients/${srno}`))
+        .then(() => {
+          console.log('Client deleted successfully for srno:', srno);
+          document.getElementById('debug').textContent = 'Client deleted successfully!';
+        })
+        .catch(error => {
+          console.error('Error deleting client:', error);
+          document.getElementById('debug').textContent = `Error deleting client: ${error.message}`;
+        });
+    }
+
+    // Search function
+    function searchTable() {
+      if (!isDataLoaded) return;
+      const searchTerm = document.getElementById('search').value.toLowerCase();
+      const rows = document.getElementById('clientList').getElementsByTagName('tr');
+      for (let i = 0; i < rows.length; i++) {
+        let match = false;
+        const cells = rows[i].getElementsByTagName('td');
+        for (let j = 0; j < cells.length - 1; j++) {
+          if (cells[j].textContent.toLowerCase().includes(searchTerm)) {
+            match = true;
+            break;
+          }
+        }
+        rows[i].style.display = match ? '' : 'none';
+      }
+    }
+
+    // Initial load
+    document.addEventListener('DOMContentLoaded', () => {
+      loadClients();
+      clearForm();
+    });
+  </script>
+</body>
+</html>
